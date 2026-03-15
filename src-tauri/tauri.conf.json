@@ -5,7 +5,7 @@
   "identifier": "com.sensedesk.dev",
   "build": {
     "frontendDist": "../frontend/dist",
-    "beforeDevCommand": "cd frontend; npm run dev",
+    "beforeDevCommand": null,
     "beforeBuildCommand": "cd frontend && npm run build"
   },
   "app": {
@@ -32,5 +32,8 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "dialog": null
   }
 }
