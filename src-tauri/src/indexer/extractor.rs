@@ -3,7 +3,6 @@ use std::path::Path;
 use anyhow::{Result, Context};
 
 /// Extracts content from files based on extension.
-/// For v1, returning raw extracted `String` for textual types.
 pub fn extract_content(path: &Path) -> Result<String> {
     let ext = path
         .extension()
@@ -19,22 +18,20 @@ pub fn extract_content(path: &Path) -> Result<String> {
             Ok(content)
         }
         "pdf" => {
-            // Placeholder: PDF extraction (requires external bin/library like pdfium or poppler)
-            // For MVP skeleton, we return a mock string to prove the pipeline works
-            Ok(format!("[PDF Content Placeholder for {:?}]", path))
+            // Use poppler's pdftotext for real PDF extraction
+            crate::indexer::media::extract_pdf(path)
         }
         "docx" | "pptx" => {
-            // Placeholder: Word/Powerpoint extraction
             Ok(format!("[DOCX/PPTX Content Placeholder for {:?}]", path))
         }
         "png" | "jpg" | "jpeg" | "webp" => {
-            // Note: Images will be converted directly to base64 downstream, not text
-            Ok(format!("[IMAGE File Context: {:?}]", path))
+            // For images, return a placeholder — multimodal embedding would
+            // use the base64 data directly in a future iteration
+            Ok(format!("[Image: {:?}]", path.file_name().unwrap_or_default()))
         }
-         "mp4" | "mov" | "mp3" | "wav" | "m4a" => {
-             // Audio/Video
-            Ok(format!("[MEDIA File Context: {:?}]", path))
+        "mp4" | "mov" | "mp3" | "wav" | "m4a" => {
+            Ok(format!("[Media: {:?}]", path.file_name().unwrap_or_default()))
         }
-        _ => Err(anyhow::anyhow!("Unsupported file extraction type: {}", ext)),
+        _ => Err(anyhow::anyhow!("Unsupported file type: {}", ext)),
     }
 }

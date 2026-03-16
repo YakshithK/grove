@@ -17,6 +17,7 @@ pub struct Part {
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedRequest {
+    pub model: String,
     pub content: Content,
     pub task_type: String,
     pub output_dimensionality: u32,

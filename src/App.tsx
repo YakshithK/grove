@@ -103,9 +103,17 @@ function App() {
                     type="password" 
                     placeholder="AIzaSy..." 
                     className="w-full px-4 py-2 rounded-lg border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    onChange={async (e) => {
+                      const { invoke } = await import("@tauri-apps/api/core");
+                      try {
+                        await invoke("set_api_key", { key: e.target.value });
+                      } catch (err) {
+                        console.error("Failed to set API key:", err);
+                      }
+                    }}
                   />
                   <p className="text-xs text-muted-foreground mt-2">
-                    Used securely for generating embeddings via Gemini API. Never shared or stored remotely.
+                    Used for generating embeddings via Gemini Embedding 2. Set <code>GEMINI_API_KEY</code> env var to auto-load on startup. Never shared or stored remotely.
                   </p>
                </div>
             </div>
