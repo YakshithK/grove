@@ -1,22 +1,40 @@
+use std::fs;
 use std::path::Path;
+use anyhow::{Result, Context};
 
-use pdf_extract::extract_text;
-use tokio::fs;
+/// Extracts content from files based on extension.
+/// For v1, returning raw extracted `String` for textual types.
+pub fn extract_content(path: &Path) -> Result<String> {
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
 
-pub async fn extract_content(path: &Path) -> Result<String, Box<dyn std::error::Error>> {
-    let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-
-    match extension.as_str() {
-        "txt" | "md" | "rs" | "js" | "ts" | "py" | "json" | "html" | "css" | "xml" | "yaml" | "yml" => {
-            fs::read_to_string(path).await.map_err(Into::into)
+    match ext.as_str() {
+        "txt" | "md" | "rs" | "py" | "js" | "ts" | "jsx" | "tsx" | "go" | "c"
+        | "cpp" | "h" | "java" | "cs" | "json" | "yaml" | "yml" | "toml" => {
+            let content = fs::read_to_string(path)
+                .with_context(|| format!("Failed reading text file: {:?}", path))?;
+            Ok(content)
         }
         "pdf" => {
-            let path_str = path.to_str().ok_or("Invalid path")?;
-            extract_text(path_str).map_err(Into::into)
+            // Placeholder: PDF extraction (requires external bin/library like pdfium or poppler)
+            // For MVP skeleton, we return a mock string to prove the pipeline works
+            Ok(format!("[PDF Content Placeholder for {:?}]", path))
         }
-        _ => {
-            // For now, skip other types like images
-            Ok(String::new())
+        "docx" | "pptx" => {
+            // Placeholder: Word/Powerpoint extraction
+            Ok(format!("[DOCX/PPTX Content Placeholder for {:?}]", path))
         }
+        "png" | "jpg" | "jpeg" | "webp" => {
+            // Note: Images will be converted directly to base64 downstream, not text
+            Ok(format!("[IMAGE File Context: {:?}]", path))
+        }
+         "mp4" | "mov" | "mp3" | "wav" | "m4a" => {
+             // Audio/Video
+            Ok(format!("[MEDIA File Context: {:?}]", path))
+        }
+        _ => Err(anyhow::anyhow!("Unsupported file extraction type: {}", ext)),
     }
 }

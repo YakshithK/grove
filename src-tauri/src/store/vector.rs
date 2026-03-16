@@ -1,38 +1,51 @@
-use std::collections::HashMap;
-use std::sync::Mutex;
+use anyhow::{Context, Result};
+use qdrant_client::{
+    Qdrant,
+    qdrant::{
+        vectors_config::Config, CreateCollection, Distance, PointStruct, VectorParams,
+        VectorsConfig,
+    },
+};
+
+const COLLECTION_NAME: &str = "sensedesk";
+const DIMENSION: u64 = 768; // Based on Matryoshka learning strategy for Gemini output
 
 pub struct VectorStore {
-    chunks: Mutex<HashMap<String, Vec<f32>>>,
+    client: Qdrant,
 }
 
 impl VectorStore {
-    pub fn new() -> Self {
-        VectorStore {
-            chunks: Mutex::new(HashMap::new()),
+    pub fn new() -> Result<Self> {
+        let client = Qdrant::from_url("http://localhost:6334").build()?;
+        
+        Ok(Self { client })
+    }
+
+    pub async fn ensure_collection(&self) -> Result<()> {
+        if !self.client.collection_exists(COLLECTION_NAME).await? {
+            self.client
+                .create_collection(
+                    qdrant_client::qdrant::CreateCollectionBuilder::new(COLLECTION_NAME)
+                    .vectors_config(VectorsConfig {
+                        config: Some(Config::Params(VectorParams {
+                            size: DIMENSION,
+                            distance: Distance::Cosine.into(),
+                            ..Default::default()
+                        })),
+                    })
+                )
+                .await
+                .context("Failed to create Qdrant collection")?;
         }
+        Ok(())
     }
 
-    pub fn insert_chunk(&self, chunk_id: String, embedding: Vec<f32>) {
-        self.chunks.lock().unwrap().insert(chunk_id, embedding);
-    }
-
-    pub fn search(&self, query_embedding: Vec<f32>, limit: usize) -> Vec<(String, f32)> {
-        let chunks = self.chunks.lock().unwrap();
-        let mut results: Vec<(String, f32)> = chunks.iter()
-            .map(|(id, emb)| (id.clone(), cosine_similarity(&query_embedding, emb)))
-            .collect();
-        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        results.into_iter().take(limit).collect()
-    }
-}
-
-fn cosine_similarity(a: &Vec<f32>, b: &Vec<f32>) -> f32 {
-    let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-    let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
-    let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
-    if norm_a == 0.0 || norm_b == 0.0 {
-        0.0
-    } else {
-        dot / (norm_a * norm_b)
+    pub async fn upsert_points(&self, points: Vec<PointStruct>) -> Result<()> {
+        self.client
+            .upsert_points(
+                qdrant_client::qdrant::UpsertPointsBuilder::new(COLLECTION_NAME, points)
+            )
+            .await?;
+        Ok(())
     }
 }
