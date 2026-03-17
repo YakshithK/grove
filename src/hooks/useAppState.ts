@@ -8,13 +8,18 @@ export function useAppState() {
 
   const checkState = async () => {
     try {
-      // Check indexer status to determine which screen to show
-      const status: { status: string; files_done: number; files_total: number } = await invoke("get_indexer_status");
+      // Check if currently indexing
+      const status: { status: string } = await invoke("get_indexer_status");
 
       if (status.status === "running" || status.status === "paused") {
         setScreen("indexing");
-      } else if (status.files_total > 0) {
-        // Previously indexed — go to search
+        return;
+      }
+
+      // Check if we have a persisted index on disk
+      const hasIndex: boolean = await invoke("check_index_exists");
+
+      if (hasIndex) {
         setScreen("search");
       } else {
         setScreen("setup");
