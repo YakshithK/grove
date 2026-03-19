@@ -238,7 +238,7 @@ pub async fn start_indexing(folders: Vec<String>, state: State<'_, AppState>) ->
                         &base64::engine::general_purpose::STANDARD,
                         &bytes,
                     );
-
+                    
                     let req = crate::embedding::client::make_binary_request(&b64, mime);
                     match crate::embedding::client::batch_embed(&hc, &api_key, vec![req]).await {
                         Ok(embeddings) => {
