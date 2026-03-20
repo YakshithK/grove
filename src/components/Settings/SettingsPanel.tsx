@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Database, Brain, Palette, RefreshCw } from "lucide-react";
+import { Settings, Database, Brain, RefreshCw } from "lucide-react";
 import { VishLogo } from "../VishLogo";
 
 interface SettingsPanelProps {
@@ -7,7 +7,7 @@ interface SettingsPanelProps {
   onReindex: () => void;
 }
 
-type SettingsTab = "general" | "index" | "neural" | "appearance";
+type SettingsTab = "general" | "index" | "neural";
 
 export function SettingsPanel({ onReindex }: SettingsPanelProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("index");
@@ -18,7 +18,6 @@ export function SettingsPanel({ onReindex }: SettingsPanelProps) {
     { id: "general", label: "General", icon: <Settings className="w-4 h-4" /> },
     { id: "index", label: "Index", icon: <Database className="w-4 h-4" /> },
     { id: "neural", label: "Neural Stats", icon: <Brain className="w-4 h-4" /> },
-    { id: "appearance", label: "Appearance", icon: <Palette className="w-4 h-4" /> },
   ];
 
   const handleRescan = async () => {
@@ -34,17 +33,23 @@ export function SettingsPanel({ onReindex }: SettingsPanelProps) {
 
   return (
     <div className="flex-1 flex flex-col animate-fade-in overflow-hidden">
-      {/* Title bar */}
-      <div className="px-6 py-3 glass-strong rounded-xl mx-6 mt-2 mb-4 flex items-center gap-3">
-        <VishLogo size={20} />
-        <h2 className="text-sm font-semibold text-frost/80 tracking-wide">
-          The Tackle Box (Settings)
-        </h2>
+      {/* Minimal top strip */}
+      <div className="px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <VishLogo size={22} />
+          <div>
+            <p className="text-xs font-mono tracking-[0.28em] text-frost/35 uppercase">vish</p>
+            <p className="text-sm font-semibold text-frost/85">settings</p>
+          </div>
+        </div>
+        <div className="text-xs font-mono text-frost/25 tracking-[0.12em]">
+          local only
+        </div>
       </div>
 
       <div className="flex flex-1 gap-4 px-6 pb-6 overflow-hidden">
         {/* Sidebar */}
-        <nav className="w-44 shrink-0 flex flex-col gap-1">
+        <nav className="w-36 shrink-0 flex flex-col gap-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -71,7 +76,6 @@ export function SettingsPanel({ onReindex }: SettingsPanelProps) {
             />
           )}
           {activeTab === "neural" && <NeuralStatsTab />}
-          {activeTab === "appearance" && <AppearanceTab />}
         </div>
       </div>
     </div>
@@ -83,18 +87,18 @@ export function SettingsPanel({ onReindex }: SettingsPanelProps) {
 function GeneralTab() {
   return (
     <div className="glass-card rounded-2xl p-5 animate-slide-in-left">
-      <h3 className="text-base font-semibold text-frost mb-4">General Settings</h3>
+      <h3 className="text-base font-semibold text-frost/90 mb-4">General</h3>
       <div className="space-y-4">
         <div>
-          <label className="block text-xs font-medium mb-2 text-frost/40 uppercase tracking-wider">
-            Gemini API
+          <label className="block text-xs font-medium mb-2 text-frost/35 uppercase tracking-wider">
+            Gemini embeddings
           </label>
-          <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-cyan-400/10 bg-deepsea-light/50 text-sm">
-            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-frost/60">API key configured</span>
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-primary/12 bg-primary/5 text-sm">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-frost/60">API key handled in backend</span>
           </div>
           <p className="text-[11px] text-frost/25 mt-2">
-            Embeddings powered by Gemini Embedding 2. All data stays local on your machine.
+            Vish sends only what it needs to embed. Your files remain local.
           </p>
         </div>
       </div>
@@ -123,7 +127,7 @@ function IndexTab({
             <button
               onClick={onRescan}
               disabled={isRescanning}
-              className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-cyan-400 to-cyan-500 text-deepsea hover:from-cyan-300 hover:to-cyan-400 glow-cyan transition-all disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl font-semibold text-sm glass-strong border border-primary/20 hover:border-primary/35 transition-all disabled:opacity-50"
             >
               <span className="flex items-center gap-2">
                 <RefreshCw className={`w-4 h-4 ${isRescanning ? "animate-spin" : ""}`} />
@@ -153,11 +157,11 @@ function IndexTab({
 function NeuralStatsTab() {
   return (
     <div className="glass-card rounded-2xl p-5 animate-slide-in-left">
-      <h3 className="text-base font-semibold text-frost mb-1">Neural Stats</h3>
-      <p className="text-xs text-frost/25 mb-4">Your knowledge graph at a glance</p>
+      <h3 className="text-base font-semibold text-frost/90 mb-1">Neural Stats</h3>
+      <p className="text-xs text-frost/25 mb-4">Stylized signal (UI placeholder)</p>
 
       {/* Neural network visualization (stylized) */}
-      <div className="relative w-full h-40 rounded-xl bg-deepsea-light/50 border border-cyan-400/5 overflow-hidden mb-4">
+      <div className="relative w-full h-40 rounded-xl bg-primary/5 border border-primary/12 overflow-hidden mb-4">
         {/* Animated dots representing neural nodes */}
         <svg className="w-full h-full" viewBox="0 0 400 160">
           {/* Connection lines */}
@@ -173,7 +177,7 @@ function NeuralStatsTab() {
                 y1={y1}
                 x2={x2}
                 y2={y2}
-                stroke="rgba(0, 245, 255, 0.08)"
+                stroke="rgba(145, 249, 229, 0.10)"
                 strokeWidth="1"
               />
             );
@@ -190,7 +194,7 @@ function NeuralStatsTab() {
                 cx={cx}
                 cy={cy}
                 r={r}
-                fill={isCyan ? "rgba(0, 245, 255, 0.4)" : "rgba(112, 0, 255, 0.4)"}
+                fill={isCyan ? "rgba(145, 249, 229, 0.35)" : "rgba(95, 221, 157, 0.35)"}
                 className="animate-pulse"
                 style={{ animationDelay: `${i * 200}ms` }}
               />
@@ -210,60 +214,9 @@ function NeuralStatsTab() {
         <div className="text-right">
           <p className="text-lg font-semibold text-frost/60">
             Embeddings created:{" "}
-            <span className="text-frost font-bold">184,512</span>
+            <span className="text-frost/90 font-bold">184,512</span>
           </p>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function AppearanceTab() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  return (
-    <div className="glass-card rounded-2xl p-5 animate-slide-in-left">
-      <h3 className="text-base font-semibold text-frost mb-4">Theme Toggle</h3>
-      <div className="flex gap-4">
-        {/* Deep Sea (Dark) */}
-        <button
-          onClick={() => setTheme("dark")}
-          className={`flex-1 rounded-xl p-3 border transition-all ${
-            theme === "dark"
-              ? "border-cyan-400/40 glow-cyan"
-              : "border-white/5 hover:border-white/10"
-          }`}
-        >
-          <div className="w-full h-16 rounded-lg mb-2 overflow-hidden flex gap-1">
-            <div className="flex-1 bg-[#0A0F14]" />
-            <div className="w-8 bg-[#141D28]" />
-            <div className="flex-1 bg-[#0F1620] flex flex-col gap-1 p-1">
-              <div className="h-1 w-full bg-cyan-400/20 rounded" />
-              <div className="h-1 w-3/4 bg-cyan-400/10 rounded" />
-            </div>
-          </div>
-          <p className="text-xs text-frost/60 text-center font-medium">Deep Sea (Dark)</p>
-        </button>
-
-        {/* Arctic Ice (Light) */}
-        <button
-          onClick={() => setTheme("light")}
-          className={`flex-1 rounded-xl p-3 border transition-all ${
-            theme === "light"
-              ? "border-cyan-400/40 glow-cyan"
-              : "border-white/5 hover:border-white/10"
-          }`}
-        >
-          <div className="w-full h-16 rounded-lg mb-2 overflow-hidden flex gap-1">
-            <div className="flex-1 bg-[#E8EDF2]" />
-            <div className="w-8 bg-[#D4DBE5]" />
-            <div className="flex-1 bg-[#F0F4F8] flex flex-col gap-1 p-1">
-              <div className="h-1 w-full bg-[#0A0F14]/10 rounded" />
-              <div className="h-1 w-3/4 bg-[#0A0F14]/5 rounded" />
-            </div>
-          </div>
-          <p className="text-xs text-frost/60 text-center font-medium">Arctic Ice (Light)</p>
-        </button>
       </div>
     </div>
   );

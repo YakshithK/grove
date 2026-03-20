@@ -75,7 +75,7 @@ export default {
           medium: '#141D28',
           card: '#111820',
         },
-        frost: '#E0E6ED',
+        frost: '#EAFBF5',
       },
       borderRadius: {
         lg: 'var(--radius)',

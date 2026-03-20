@@ -1,108 +1,19 @@
 import { invoke } from "@tauri-apps/api/core";
 import { SearchResult } from "../hooks/useSearch";
-import {
-  FileIcon,
-  ImageIcon,
-  FileTextIcon,
-  FolderOpen,
-  VideoIcon,
-  CodeIcon,
-  ExternalLink,
-  FileSpreadsheetIcon,
-} from "lucide-react";
+import { FolderOpen, ExternalLink } from "lucide-react";
 import { useState } from "react";
 
 interface ResultListProps {
   results: SearchResult[];
 }
 
-// File type icon with colored background
 function FileTypeBadge({ type }: { type: string }) {
-  const config = getFileTypeConfig(type);
+  const label = type.toLowerCase();
   return (
-    <div
-      className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
-      style={{ background: config.bg }}
-    >
-      <config.icon className="w-6 h-6" style={{ color: config.color }} />
-      <span
-        className="absolute text-[8px] font-black tracking-wider uppercase mt-9"
-        style={{ color: config.color }}
-      >
-        {config.label}
-      </span>
-    </div>
+    <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-mono tracking-[0.22em] uppercase border border-primary/20 bg-primary/5 text-primary/80">
+      {label}
+    </span>
   );
-}
-
-function getFileTypeConfig(type: string) {
-  const t = type.toLowerCase();
-  switch (t) {
-    case "pdf":
-      return {
-        icon: FileTextIcon,
-        color: "#FF6B6B",
-        bg: "rgba(255, 107, 107, 0.12)",
-        label: "PDF",
-      };
-    case "docx":
-    case "doc":
-      return {
-        icon: FileSpreadsheetIcon,
-        color: "#4A9EFF",
-        bg: "rgba(74, 158, 255, 0.12)",
-        label: "DOCX",
-      };
-    case "txt":
-    case "md":
-      return {
-        icon: FileTextIcon,
-        color: "#80FFEA",
-        bg: "rgba(128, 255, 234, 0.12)",
-        label: t.toUpperCase(),
-      };
-    case "png":
-    case "jpg":
-    case "jpeg":
-    case "webp":
-      return {
-        icon: ImageIcon,
-        color: "#7CFF7C",
-        bg: "rgba(124, 255, 124, 0.12)",
-        label: t.toUpperCase(),
-      };
-    case "rs":
-    case "js":
-    case "ts":
-    case "py":
-    case "tsx":
-    case "jsx":
-    case "go":
-    case "c":
-    case "cpp":
-    case "java":
-      return {
-        icon: CodeIcon,
-        color: "#00F5FF",
-        bg: "rgba(0, 245, 255, 0.12)",
-        label: `</${">"}`,
-      };
-    case "mp4":
-    case "mov":
-      return {
-        icon: VideoIcon,
-        color: "#C880FF",
-        bg: "rgba(200, 128, 255, 0.12)",
-        label: t.toUpperCase(),
-      };
-    default:
-      return {
-        icon: FileIcon,
-        color: "#A0A8B4",
-        bg: "rgba(160, 168, 180, 0.08)",
-        label: t.toUpperCase(),
-      };
-  }
 }
 
 export function ResultList({ results }: ResultListProps) {
@@ -111,7 +22,14 @@ export function ResultList({ results }: ResultListProps) {
   if (results.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-frost/40 animate-fade-in">
-        <p>No results found. Try a different query.</p>
+        <div className="glass-strong rounded-[2rem] px-8 py-10 border border-primary/10 w-full max-w-xl text-center">
+          <p className="text-xs font-mono tracking-[0.22em] uppercase text-frost/35 mb-4">
+            no hits
+          </p>
+          <p className="text-sm text-frost/60">
+            Adjust your phrasing and let Vish re-embed the intent.
+          </p>
+        </div>
       </div>
     );
   }
@@ -164,7 +82,7 @@ export function ResultList({ results }: ResultListProps) {
     selectedIdx !== null ? uniqueResults[selectedIdx] : null;
 
   return (
-    <div className="flex gap-6 px-8 py-6 w-full max-w-6xl mx-auto">
+    <div className="flex gap-6 px-8 py-6 w-full max-w-7xl mx-auto">
       {/* Result cards */}
       <div className="flex-1 flex flex-col gap-2.5 overflow-y-auto min-w-0">
         <p className="text-xs text-frost/30 mb-1">
@@ -179,61 +97,52 @@ export function ResultList({ results }: ResultListProps) {
           return (
             <div
               key={`${result.path}-${idx}`}
-              className={`relative flex items-start gap-6 p-6 md:p-8 rounded-3xl glass-card cursor-pointer group animate-fade-in
-                         ${isSelected ? "border-cyan-400/40 glow-cyan-strong" : ""}`}
+              className={`relative flex items-start gap-5 p-5 rounded-2xl glass-card cursor-pointer group animate-fade-in border
+                         ${isSelected ? "border-primary/45 glow-cyan-strong" : "border-transparent"}`}
               style={{ animationDelay: `${idx * 50}ms` }}
               onClick={() => handleOpen(result.path)}
               onMouseEnter={() => setSelectedIdx(idx)}
             >
-              {/* Left glow bar */}
-              <div
-                className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full transition-all duration-300"
-                style={{
-                  background: isSelected
-                    ? "linear-gradient(to bottom, #00F5FF, #7000FF)"
-                    : "transparent",
-                }}
-              />
-
               {/* File type badge */}
-              <div className="relative">
+              <div className="pt-1">
                 <FileTypeBadge type={result.file_type} />
               </div>
 
               {/* Center: filename + snippet */}
-              <div className="min-w-0 flex-1 mt-1">
-                <h3 className="font-display font-bold text-xl text-frost truncate mb-1">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-display font-semibold text-lg text-frost/90 truncate mb-1">
                   {fileName}
                 </h3>
                 {result.text_excerpt && (
                   <div className="mt-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-cyan-400/80 mb-1.5 block">
-                      Semantic Match
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary/70 mb-1.5 block">
+                      semantic match
                     </span>
-                    <p className="text-sm text-frost/60 line-clamp-2 leading-loose font-body">
-                      {result.text_excerpt.substring(0, 250)}...
+                    <p className="text-sm text-frost/60 line-clamp-2 leading-relaxed font-body">
+                      {result.text_excerpt.substring(0, 220)}...
                     </p>
                   </div>
                 )}
               </div>
 
               {/* Right: metadata */}
-              <div className="flex flex-col items-end gap-1 shrink-0 text-right">
-                <span className="text-xs font-mono text-cyan-400 bg-cyan-400/10 px-2.5 py-1 rounded-full">
-                  Relevance: {relevance}%
+              <div className="flex flex-col items-end gap-2 shrink-0 text-right">
+                <span className="text-[11px] font-mono tracking-[0.18em] text-frost/60 border border-primary/18 bg-primary/5 px-2.5 py-1 rounded-full">
+                  {relevance}%
                 </span>
-                <div className="flex items-center gap-1.5 mt-2 opacity-0 group-hover:opacity-100 transition-all">
+                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleReveal(result.path);
                     }}
-                    className="p-1.5 hover:bg-white/5 rounded-lg transition-all"
+                    className="p-1.5 rounded-lg transition-all border border-transparent hover:border-primary/20 hover:bg-white/5"
                     title="Reveal in Explorer"
+                    aria-label="Reveal in Explorer"
                   >
                     <FolderOpen className="w-3.5 h-3.5 text-frost/40" />
                   </button>
-                  <div className="p-1.5">
+                  <div className="p-1.5 opacity-80">
                     <ExternalLink className="w-3.5 h-3.5 text-frost/40" />
                   </div>
                 </div>
@@ -246,16 +155,14 @@ export function ResultList({ results }: ResultListProps) {
       {/* Quick Look preview panel */}
       {selectedResult && (
         <div className="w-80 shrink-0 glass-strong rounded-[2rem] p-6 animate-fade-in-scale hidden lg:flex flex-col shadow-2xl border border-white/5">
-          <h4 className="text-[10px] font-bold uppercase tracking-widest text-cyan-400/80 mb-5">
-            Quick Look
-          </h4>
-          <div className="w-full aspect-square rounded-2xl bg-deepsea/80 flex items-center justify-center mb-5 border border-cyan-400/10 shadow-inner overflow-hidden">
-            {/* Placeholder for preview */}
-            <div className="text-center p-4">
-              <FileTypeBadge type={selectedResult.file_type} />
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary/70">
+              quick look
+            </h4>
+            <FileTypeBadge type={selectedResult.file_type} />
           </div>
-          <p className="text-base text-frost font-display font-medium truncate mb-2">
+
+          <p className="text-base text-frost font-display font-semibold truncate mb-2">
             {selectedResult.path.split("/").pop() ||
               selectedResult.path.split("\\").pop()}
           </p>
@@ -264,8 +171,8 @@ export function ResultList({ results }: ResultListProps) {
           </p>
           {selectedResult.text_excerpt && (
             <div className="mt-4 pt-4 border-t border-white/5">
-              <p className="text-xs text-frost/50 line-clamp-5 leading-loose font-body">
-                {selectedResult.text_excerpt.substring(0, 300)}
+              <p className="text-xs text-frost/55 line-clamp-5 leading-relaxed font-body">
+                {selectedResult.text_excerpt.substring(0, 280)}
               </p>
             </div>
           )}

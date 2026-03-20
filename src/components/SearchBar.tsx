@@ -29,7 +29,7 @@ export function SearchBar({
   return (
     <div className={`w-full px-6 ${compact ? "py-2" : "py-4"}`}>
       <div className="relative max-w-2xl mx-auto">
-        {/* Violet glow behind bar when focused/searching */}
+        {/* Subtle glass halo when focused */}
         <div
           className={`absolute -inset-3 rounded-3xl transition-all duration-700 pointer-events-none ${
             isFocused || isLoading
@@ -37,9 +37,8 @@ export function SearchBar({
               : "opacity-0"
           }`}
           style={{
-            background: isLoading
-              ? "radial-gradient(ellipse at center, rgba(112, 0, 255, 0.15) 0%, rgba(0, 245, 255, 0.05) 50%, transparent 80%)"
-              : "radial-gradient(ellipse at center, rgba(0, 245, 255, 0.08) 0%, rgba(112, 0, 255, 0.04) 50%, transparent 80%)",
+            background:
+              "radial-gradient(ellipse at center, rgba(145, 249, 229, 0.16) 0%, rgba(95, 221, 157, 0.06) 55%, transparent 80%)",
           }}
         />
 
@@ -49,7 +48,7 @@ export function SearchBar({
             {onSettingsClick && (
               <button
                 onClick={onSettingsClick}
-                className="p-2 rounded-xl text-frost/40 hover:text-cyan-400 hover:bg-cyan-400/10 transition-all font-bold"
+                className="glass p-2 rounded-xl text-frost/45 border border-transparent hover:border-primary/35 hover:text-primary transition-all font-bold"
               >
                 <Settings className="w-5 h-5" />
               </button>
@@ -57,7 +56,7 @@ export function SearchBar({
             {onClose && (
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl text-frost/40 hover:text-destructive hover:bg-destructive/10 transition-all"
+                className="glass p-2 rounded-xl text-frost/45 border border-transparent hover:border-destructive/30 hover:text-destructive transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -69,9 +68,9 @@ export function SearchBar({
         <form onSubmit={handleSubmit} className="relative group">
           <div className={`absolute inset-y-0 left-6 flex items-center pointer-events-none transition-all duration-500`}>
             {isLoading ? (
-              <Loader2 className={`${compact ? "w-5 h-5" : "w-8 h-8"} text-cyan-400 animate-spin`} />
+              <Loader2 className={`${compact ? "w-5 h-5" : "w-8 h-8"} text-primary animate-spin`} />
             ) : (
-              <SearchIcon className={`${compact ? "w-5 h-5" : "w-8 h-8"} text-frost/40 group-focus-within:text-cyan-400 transition-colors duration-300 drop-shadow`} />
+              <SearchIcon className={`${compact ? "w-5 h-5" : "w-8 h-8"} text-frost/45 group-focus-within:text-primary transition-colors duration-300 drop-shadow`} />
             )}
           </div>
           <input
@@ -84,16 +83,13 @@ export function SearchBar({
             className={`w-full ${compact ? "pl-14 pr-6 py-4 text-base" : "pl-16 pr-8 py-6 text-xl md:text-2xl"} 
                        rounded-[2rem] text-frost placeholder:text-frost/30 font-display
                        focus:outline-none transition-all duration-500 glass-strong shadow-2xl
-                       border ${isFocused ? "border-cyan-400/50 glow-cyan-strong" : "border-cyan-400/10"}
-                       ${isLoading ? "border-violet-500/50 glow-violet-strong" : ""}`}
+                       border ${isFocused ? "border-primary/55 glow-cyan-strong" : "border-primary/10"}
+                       ${isLoading ? "border-accent/45 glow-violet-strong" : ""}`}
             autoFocus
           />
         </form>
 
-        {/* Perspective grid below the bar (non-compact mode) */}
-        {!compact && (
-          <div className="w-full h-24 mt-2 perspective-grid rounded-b-2xl opacity-40" />
-        )}
+        {/* No decorative grid: blank space first */}
       </div>
     </div>
   );
