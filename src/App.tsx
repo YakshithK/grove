@@ -23,7 +23,7 @@ function App() {
         <div className="vish-bg" aria-hidden="true" />
         <div className="flex flex-col items-center gap-4 animate-fade-in z-10">
           <VishLogo size={44} glowing />
-          <Loader2 className="w-5 h-5 text-primary/70 animate-spin" />
+          <Loader2 className="w-5 h-5 text-accent/70 animate-spin" />
           <p className="text-xs text-frost/40 font-mono tracking-wide">
             indexing core...
           </p>
@@ -54,11 +54,7 @@ function App() {
 
       {/* Header */}
       <header
-        className={`flex items-center justify-between px-7 py-5 z-20 transition-all duration-700 ${
-          results.length === 0 && !isSearching
-            ? "opacity-0 translate-y-[-12px] pointer-events-none"
-            : "opacity-100 translate-y-0"
-        }`}
+        className="flex items-center justify-between px-7 py-5 z-20"
       >
         <div className="flex items-center gap-3">
           <VishLogo size={28} />
@@ -70,11 +66,13 @@ function App() {
           <button
             onClick={() => setShowSettings(!showSettings)}
             className={`glass-strong p-2 rounded-xl transition-all duration-300 ${
-              showSettings ? "border border-primary/40" : "border border-transparent"
+              showSettings
+                ? "border border-accent/40"
+                : "border border-transparent"
             }`}
             aria-label="Settings"
           >
-            <Settings className="w-5 h-5 text-primary/80" />
+            <Settings className="w-5 h-5 text-accent/80" />
           </button>
         </div>
       </header>
@@ -99,7 +97,7 @@ function App() {
           <div
             className={`flex flex-col transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               results.length === 0 && !isSearching
-                ? "flex-1 justify-center -mt-10"
+                ? "flex-1 justify-center -mt-4"
                 : "pt-2"
             }`}
           >
@@ -110,7 +108,7 @@ function App() {
                 </p>
                 <h2 className="mt-3 text-3xl md:text-4xl font-semibold text-frost/85 tracking-tight">
                   find the thing you meant,
-                  <span className="block text-primary/90">not the thing you typed</span>
+                  <span className="block text-accent/90">not the thing you typed</span>
                 </h2>
                 <p className="mt-4 text-frost/45 text-sm max-w-xl mx-auto leading-relaxed">
                   Drop a folder, let Vish map it, then ask in natural language.
@@ -120,7 +118,6 @@ function App() {
             <SearchBar
               onSearch={search}
               isLoading={isSearching}
-              onSettingsClick={() => setShowSettings(true)}
               compact={results.length > 0 || isSearching}
             />
           </div>
