@@ -58,7 +58,7 @@ function App() {
       >
         <div className="flex items-center gap-3">
           <VishLogo size={28} />
-          <span className="text-sm font-semibold tracking-widest uppercase text-frost/70">
+          <span className="text-sm font-semibold tracking-widest uppercase gradient-text-cyan">
             Vish
           </span>
         </div>
@@ -67,12 +67,12 @@ function App() {
             onClick={() => setShowSettings(!showSettings)}
             className={`glass-strong p-2 rounded-xl transition-all duration-300 ${
               showSettings
-                ? "border border-accent/40"
+                ? "border border-secondary/45"
                 : "border border-transparent"
             }`}
             aria-label="Settings"
           >
-            <Settings className="w-5 h-5 text-accent/80" />
+            <Settings className="w-5 h-5 text-primary/85" />
           </button>
         </div>
       </header>
@@ -108,7 +108,7 @@ function App() {
                 </p>
                 <h2 className="mt-3 text-3xl md:text-4xl font-semibold text-frost/85 tracking-tight">
                   find the thing you meant,
-                  <span className="block text-accent/90">not the thing you typed</span>
+                  <span className="block gradient-text">not the thing you typed</span>
                 </h2>
                 <p className="mt-4 text-frost/45 text-sm max-w-xl mx-auto leading-relaxed">
                   Drop a folder, let Vish map it, then ask in natural language.

@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::process::Command;
 use tauri::State;
 
@@ -279,7 +280,12 @@ pub async fn start_indexing(folders: Vec<String>, state: State<'_, AppState>) ->
                         return;
                     }
 
-                    let chunks = crate::indexer::chunker::chunk_text(&text, CHUNK_TOKENS, CHUNK_OVERLAP);
+                    let chunks = crate::indexer::chunker::chunk_text_for_extension(
+                        &text,
+                        &ext,
+                        CHUNK_TOKENS,
+                        CHUNK_OVERLAP,
+                    );
                     if chunks.is_empty() {
                         fd.fetch_add(1, Ordering::SeqCst);
                         return;
@@ -380,6 +386,11 @@ pub async fn search(
     _filters: Option<crate::search::SearchFilters>,
     state: State<'_, AppState>,
 ) -> Result<Vec<crate::search::SearchResult>, String> {
+    const FILE_RESULT_LIMIT: usize = 20;
+    const CHUNK_CANDIDATE_LIMIT: usize = 100;
+    const RRF_K: f32 = 60.0;
+    let query_features = QueryFeatures::from_query(&query);
+
     let api_key = state.api_key.lock().await.clone();
     if api_key.is_empty() {
         return Err("No Gemini API key set.".to_string());
@@ -392,27 +403,297 @@ pub async fn search(
 
     // 2. Search local vector store
     let scored_points = state.vector_store
-        .search(query_vector, 20)
+        .search(query_vector, CHUNK_CANDIDATE_LIMIT)
         .await
         .map_err(|e| format!("Search failed: {}", e))?;
 
-    // 3. Transform into SearchResults
-    let results: Vec<crate::search::SearchResult> = scored_points.into_iter().enumerate()
-        .map(|(rank, point)| {
-            crate::search::SearchResult {
-                chunk_id: format!("chk-{}", point.id),
-                file_id: point.payload.get("path").cloned().unwrap_or_default(),
-                path: point.payload.get("path").cloned().unwrap_or_default(),
-                file_type: point.payload.get("file_type").cloned().unwrap_or_default(),
-                text_excerpt: point.payload.get("chunk_text").cloned(),
-                thumbnail_path: None,
-                score: point.score,
-                rank: rank + 1,
-            }
+    let lexical_points = state
+        .vector_store
+        .lexical_search(&query, CHUNK_CANDIDATE_LIMIT)
+        .await;
+
+    // 3. Fuse dense + lexical retrieval into a single file-level ranking.
+    let mut fused_by_path: HashMap<String, FileCandidate> = HashMap::new();
+    for (rank, point) in scored_points.into_iter().enumerate() {
+        let path = point.payload.get("path").cloned().unwrap_or_default();
+        if path.is_empty() {
+            continue;
+        }
+
+        let entry = fused_by_path.entry(path.clone()).or_insert_with(|| {
+            FileCandidate::new(path.clone(), point.payload.get("file_type").cloned().unwrap_or_default())
+        });
+        entry.rrf_score += 1.0 / (RRF_K + rank as f32 + 1.0);
+        entry.dense_score = entry.dense_score.max(point.score);
+
+        let candidate = build_search_result(&point);
+        if entry
+            .representative
+            .as_ref()
+            .map(|existing| candidate.score > existing.score)
+            .unwrap_or(true)
+        {
+            entry.representative = Some(candidate);
+        }
+    }
+
+    for (rank, point) in lexical_points.into_iter().enumerate() {
+        let path = point.payload.get("path").cloned().unwrap_or_default();
+        if path.is_empty() {
+            continue;
+        }
+
+        let entry = fused_by_path.entry(path.clone()).or_insert_with(|| {
+            FileCandidate::new(path.clone(), point.payload.get("file_type").cloned().unwrap_or_default())
+        });
+        entry.rrf_score += 1.0 / (RRF_K + rank as f32 + 1.0);
+        entry.lexical_score = entry.lexical_score.max(point.score);
+
+        if entry.representative.is_none() {
+            entry.representative = Some(build_search_result(&point));
+        }
+    }
+
+    let mut results: Vec<_> = fused_by_path
+        .into_values()
+        .filter_map(|candidate| {
+            let mut result = candidate.representative?;
+            result.file_type = if result.file_type.is_empty() {
+                candidate.file_type
+            } else {
+                result.file_type
+            };
+            let lexical_bonus = (candidate.lexical_score.min(12.0) / 12.0) * 0.05;
+            result.score = candidate.rrf_score + candidate.dense_score * 0.15 + lexical_bonus;
+            Some(result)
         })
         .collect();
 
+    results.sort_by(|a, b| {
+        b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal)
+    });
+    rerank_results(&mut results, &query_features);
+    results.truncate(FILE_RESULT_LIMIT);
+
+    for (index, result) in results.iter_mut().enumerate() {
+        result.rank = index + 1;
+    }
+
     Ok(results)
+}
+
+struct FileCandidate {
+    file_type: String,
+    representative: Option<crate::search::SearchResult>,
+    rrf_score: f32,
+    dense_score: f32,
+    lexical_score: f32,
+}
+
+impl FileCandidate {
+    fn new(_path: String, file_type: String) -> Self {
+        Self {
+            file_type,
+            representative: None,
+            rrf_score: 0.0,
+            dense_score: 0.0,
+            lexical_score: 0.0,
+        }
+    }
+}
+
+fn build_search_result(point: &crate::store::vector::ScoredPoint) -> crate::search::SearchResult {
+    let path = point.payload.get("path").cloned().unwrap_or_default();
+    crate::search::SearchResult {
+        chunk_id: format!("chk-{}", point.id),
+        file_id: path.clone(),
+        path,
+        file_type: point.payload.get("file_type").cloned().unwrap_or_default(),
+        text_excerpt: point.payload.get("chunk_text").cloned(),
+        thumbnail_path: None,
+        score: point.score,
+        rank: 0,
+    }
+}
+
+struct QueryFeatures {
+    raw: String,
+    tokens: Vec<String>,
+    file_type_hints: Vec<String>,
+    code_intent: bool,
+}
+
+impl QueryFeatures {
+    fn from_query(query: &str) -> Self {
+        let raw = query.trim().to_lowercase();
+        let tokens = tokenize_query(&raw);
+        let file_type_hints = tokens
+            .iter()
+            .filter(|token| is_file_type_token(token))
+            .cloned()
+            .collect();
+        let code_intent = tokens.iter().any(|token| {
+            matches!(
+                token.as_str(),
+                "function"
+                    | "method"
+                    | "class"
+                    | "struct"
+                    | "enum"
+                    | "trait"
+                    | "interface"
+                    | "impl"
+                    | "module"
+                    | "parser"
+                    | "query"
+                    | "error"
+                    | "stacktrace"
+                    | "rust"
+                    | "python"
+                    | "typescript"
+                    | "javascript"
+                    | "java"
+                    | "golang"
+                    | "code"
+            )
+        });
+
+        Self {
+            raw,
+            tokens,
+            file_type_hints,
+            code_intent,
+        }
+    }
+}
+
+fn rerank_results(results: &mut Vec<crate::search::SearchResult>, query: &QueryFeatures) {
+    for result in results.iter_mut() {
+        result.score += rerank_bonus(result, query);
+    }
+
+    results.sort_by(|a, b| {
+        b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal)
+    });
+}
+
+fn rerank_bonus(result: &crate::search::SearchResult, query: &QueryFeatures) -> f32 {
+    let path = result.path.to_lowercase();
+    let file_type = result.file_type.to_lowercase();
+    let snippet = result
+        .text_excerpt
+        .as_deref()
+        .unwrap_or_default()
+        .to_lowercase();
+    let filename = path
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or_default()
+        .to_string();
+
+    let mut bonus = 0.0;
+
+    if !query.raw.is_empty() {
+        if filename.contains(&query.raw) {
+            bonus += 0.16;
+        }
+        if path.contains(&query.raw) {
+            bonus += 0.08;
+        }
+        if !snippet.is_empty() && snippet.contains(&query.raw) {
+            bonus += 0.06;
+        }
+    }
+
+    for token in &query.tokens {
+        if filename.contains(token) {
+            bonus += 0.028;
+        }
+        if path.contains(token) {
+            bonus += 0.014;
+        }
+        if !snippet.is_empty() && snippet.contains(token) {
+            bonus += 0.012;
+        }
+    }
+
+    if query.code_intent && is_code_file_type(&file_type) {
+        bonus += 0.08;
+    }
+
+    if query
+        .file_type_hints
+        .iter()
+        .any(|hint| hint == &file_type || filename.ends_with(&format!(".{hint}")))
+    {
+        bonus += 0.07;
+    }
+
+    bonus
+}
+
+fn tokenize_query(query: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+
+    for ch in query.chars() {
+        if ch.is_ascii_alphanumeric() {
+            current.push(ch);
+        } else if !current.is_empty() {
+            if current.len() >= 2 {
+                tokens.push(std::mem::take(&mut current));
+            } else {
+                current.clear();
+            }
+        }
+    }
+
+    if current.len() >= 2 {
+        tokens.push(current);
+    }
+
+    tokens.sort();
+    tokens.dedup();
+    tokens
+}
+
+fn is_file_type_token(token: &str) -> bool {
+    matches!(
+        token,
+        "pdf"
+            | "md"
+            | "markdown"
+            | "txt"
+            | "json"
+            | "yaml"
+            | "yml"
+            | "toml"
+            | "rs"
+            | "py"
+            | "js"
+            | "ts"
+            | "tsx"
+            | "jsx"
+            | "cpp"
+            | "java"
+            | "cs"
+            | "png"
+            | "jpg"
+            | "jpeg"
+            | "webp"
+            | "mp4"
+            | "mov"
+            | "mp3"
+            | "wav"
+            | "m4a"
+    )
+}
+
+fn is_code_file_type(file_type: &str) -> bool {
+    matches!(
+        file_type,
+        "rs" | "py" | "js" | "ts" | "jsx" | "tsx" | "go" | "c" | "cpp" | "h" | "java" | "cs"
+    )
 }
 
 // OS Reveal Handlers

@@ -10,14 +10,14 @@ interface ResultListProps {
 function FileTypeBadge({ type }: { type: string }) {
   const label = type.toLowerCase();
   return (
-    <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-mono tracking-[0.22em] uppercase border border-accent/20 bg-accent/5 text-accent/80">
+    <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-mono tracking-[0.22em] uppercase border border-secondary/25 bg-secondary/10 text-gold/90">
       {label}
     </span>
   );
 }
 
 export function ResultList({ results }: ResultListProps) {
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(0);
 
   if (results.length === 0) {
     return (
@@ -50,27 +50,15 @@ export function ResultList({ results }: ResultListProps) {
     }
   };
 
-  // Deduplicate: keep only the highest-scoring result per file path
-  const seen = new Map<string, SearchResult>();
-  for (const r of results) {
-    const existing = seen.get(r.path);
-    if (!existing || r.score > existing.score) {
-      seen.set(r.path, r);
-    }
-  }
-  const uniqueResults = Array.from(seen.values()).sort(
-    (a, b) => b.score - a.score
-  );
-
   // Normalize scores for display so the spread between results is visible.
   // Raw cosine similarities cluster in a narrow band (e.g. 0.45-0.55) which
   // looks like "similar %" to the user. Min-max normalization maps the best
   // result to ~98% and worst to a proportionally lower value.
-  const maxScore = uniqueResults.length > 0 ? uniqueResults[0].score : 1;
-  const minScore = uniqueResults.length > 1 ? uniqueResults[uniqueResults.length - 1].score : 0;
+  const maxScore = results.length > 0 ? results[0].score : 1;
+  const minScore = results.length > 1 ? results[results.length - 1].score : 0;
   const scoreRange = maxScore - minScore;
   const normalizeScore = (raw: number) => {
-    if (uniqueResults.length <= 1 || scoreRange < 0.001) {
+    if (results.length <= 1 || scoreRange < 0.001) {
       // Single result or all identical scores: show raw as capped at 98
       return Math.min(Math.round(raw * 100), 98);
     }
@@ -79,16 +67,16 @@ export function ResultList({ results }: ResultListProps) {
   };
 
   const selectedResult =
-    selectedIdx !== null ? uniqueResults[selectedIdx] : null;
+    selectedIdx !== null ? results[selectedIdx] : null;
 
   return (
     <div className="flex flex-col gap-6 px-8 py-6 w-full max-w-7xl mx-auto lg:flex-row">
       {/* Result cards */}
       <div className="flex-1 flex flex-col gap-2.5 overflow-y-auto min-w-0">
         <p className="text-xs text-frost/30 mb-1">
-          {uniqueResults.length} result{uniqueResults.length !== 1 ? "s" : ""}
+          {results.length} result{results.length !== 1 ? "s" : ""}
         </p>
-        {uniqueResults.map((result, idx) => {
+        {results.map((result, idx) => {
           const relevance = normalizeScore(result.score);
           const fileName =
             result.path.split("/").pop() || result.path.split("\\").pop();
@@ -98,13 +86,11 @@ export function ResultList({ results }: ResultListProps) {
             <div
               key={`${result.path}-${idx}`}
               className={`relative flex items-start gap-5 p-6 rounded-2xl glass-card cursor-pointer group animate-fade-in border
-                         ${isSelected ? "border-accent/45" : "border-transparent"}`}
-              style={{ animationDelay: `${idx * 50}ms` }}
+                         ${isSelected ? "border-gold/45" : "border-transparent"}`}
               onClick={() => {
                 setSelectedIdx(idx);
                 handleOpen(result.path);
               }}
-              onMouseEnter={() => setSelectedIdx(idx)}
             >
               {/* File type badge */}
               <div className="pt-1">
@@ -118,7 +104,7 @@ export function ResultList({ results }: ResultListProps) {
                 </h3>
                 {result.text_excerpt && (
                   <div className="mt-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-accent/70 mb-1.5 block">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary/75 mb-1.5 block">
                       semantic match
                     </span>
                     <p className="text-sm text-frost/60 line-clamp-4 leading-relaxed font-body">
@@ -130,7 +116,7 @@ export function ResultList({ results }: ResultListProps) {
 
               {/* Right: metadata */}
               <div className="flex flex-col items-end gap-2 shrink-0 text-right">
-                <span className="text-[12px] font-mono tracking-[0.18em] text-frost/60 border border-accent/18 bg-accent/5 px-2.5 py-1 rounded-full">
+                <span className="text-[12px] font-mono tracking-[0.18em] text-frost/70 border border-primary/20 bg-primary/10 px-2.5 py-1 rounded-full">
                   {relevance}%
                 </span>
                 <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
@@ -139,7 +125,7 @@ export function ResultList({ results }: ResultListProps) {
                       e.stopPropagation();
                       handleReveal(result.path);
                     }}
-                    className="p-1.5 rounded-lg transition-all border border-transparent hover:border-primary/20 hover:bg-white/5"
+                    className="p-1.5 rounded-lg transition-all border border-transparent hover:border-secondary/20 hover:bg-white/5"
                     title="Reveal in Explorer"
                     aria-label="Reveal in Explorer"
                   >
@@ -159,7 +145,7 @@ export function ResultList({ results }: ResultListProps) {
       {selectedResult && (
         <div className="w-full glass-strong rounded-[2rem] p-6 animate-fade-in-scale lg:hidden border border-white/5">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-accent/70">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-gold/80">
               quick look
             </h4>
             <FileTypeBadge type={selectedResult.file_type} />
@@ -186,7 +172,7 @@ export function ResultList({ results }: ResultListProps) {
       {selectedResult && (
         <div className="w-80 shrink-0 glass-strong rounded-[2rem] p-6 animate-fade-in-scale hidden lg:flex flex-col border border-white/5">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-accent/70">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-gold/80">
               quick look
             </h4>
             <FileTypeBadge type={selectedResult.file_type} />

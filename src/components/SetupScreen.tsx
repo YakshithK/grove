@@ -88,7 +88,7 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
                 <p className="text-xs font-mono tracking-[0.28em] text-frost/35 uppercase">
                   setup
                 </p>
-                <h1 className="text-2xl font-semibold text-frost/90">
+                <h1 className="text-2xl font-semibold gradient-text">
                   Cast roots into Vish
                 </h1>
               </div>
@@ -107,14 +107,14 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
             onClick={() => inputRef.current?.focus()}
           >
             <div className="flex items-center gap-4 min-w-0">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-inner">
-                <FolderOpen className="w-6 h-6 text-primary/85" />
+              <div className="w-12 h-12 rounded-2xl bg-secondary/10 border border-secondary/20 flex items-center justify-center shadow-inner">
+                <FolderOpen className="w-6 h-6 text-gold/90" />
               </div>
               <p className="text-sm text-frost/65 font-body truncate">
                 Drop folders here (or type a path below).
               </p>
             </div>
-            <ArrowRight className="w-5 h-5 text-primary/75 shrink-0" />
+            <ArrowRight className="w-5 h-5 text-primary/80 shrink-0" />
           </div>
 
           {/* Manual path input */}
@@ -126,15 +126,15 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
               onChange={(e) => setFolderPath(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Directory path (e.g., /home/you/Documents)"
-              className="w-full px-5 py-4 rounded-2xl border border-primary/20 bg-black/10 text-frost placeholder:text-frost/25 focus:outline-none focus:border-primary/55 focus:ring-1 focus:ring-primary/20 transition-all text-base font-mono shadow-inner"
+              className="w-full px-5 py-4 rounded-2xl border border-primary/20 bg-black/10 text-frost placeholder:text-frost/25 focus:outline-none focus:border-gold/65 focus:ring-1 focus:ring-secondary/25 transition-all text-base font-mono shadow-inner"
             />
             {folderPath.trim() && (
               <button
                 onClick={() => addFolder(folderPath)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl glass-strong border border-primary/18 hover:border-primary/35 transition-all font-bold"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl glass-strong border border-secondary/22 hover:border-gold/40 transition-all font-bold"
                 aria-label="Add folder"
               >
-                <ArrowRight className="w-5 h-5 text-primary/85" />
+                <ArrowRight className="w-5 h-5 text-gold/90" />
               </button>
             )}
           </div>
@@ -154,9 +154,9 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
                 {folders.map((folder) => (
                   <div
                     key={folder}
-                    className="group inline-flex items-center gap-2 px-3 py-2 rounded-xl glass-card border border-primary/10"
+                    className="group inline-flex items-center gap-2 px-3 py-2 rounded-xl glass-card border border-secondary/15"
                   >
-                    <Check className="w-4 h-4 text-primary/85 shrink-0" />
+                    <Check className="w-4 h-4 text-primary shrink-0" />
                     <span className="text-xs text-frost/75 font-mono max-w-[320px] truncate">
                       {folder}
                     </span>
@@ -185,10 +185,10 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
               onClick={handleContinue}
               disabled={isLoading || folders.length === 0}
               className="px-10 py-3 rounded-2xl font-semibold text-sm tracking-[0.22em] uppercase disabled:opacity-35 disabled:cursor-not-allowed
-                         glass-strong border border-primary/22 hover:border-primary/45 transition-all flex items-center gap-2"
+                         glass-strong border border-secondary/24 hover:border-gold/50 transition-all flex items-center gap-2"
             >
               {isLoading ? "initializing" : "continue"}
-              {!isLoading && <ArrowRight className="w-4 h-4 text-primary/85" />}
+              {!isLoading && <ArrowRight className="w-4 h-4 text-gold/90" />}
             </button>
           </div>
         </div>

@@ -70,7 +70,7 @@ export function IndexingScreen({ onComplete, onCancel }: IndexingScreenProps) {
                 <p className="text-xs font-mono tracking-[0.28em] text-frost/35 uppercase">
                   indexing
                 </p>
-                <h2 className="text-lg font-semibold text-frost/90">
+                <h2 className="text-lg font-semibold gradient-text-cyan">
                   Mapping roots into vectors
                 </h2>
               </div>
@@ -97,8 +97,8 @@ export function IndexingScreen({ onComplete, onCancel }: IndexingScreenProps) {
                 className="h-full rounded-full transition-all duration-700 ease-out"
                 style={{
                   width: `${progress}%`,
-                  background: "linear-gradient(90deg, rgba(145, 249, 229, 0.95), rgba(95, 221, 157, 0.65))",
-                  boxShadow: "0 0 18px rgba(145, 249, 229, 0.18)",
+                  background: "linear-gradient(90deg, rgba(77, 225, 255, 0.95), rgba(162, 92, 255, 0.78), rgba(255, 157, 87, 0.78))",
+                  boxShadow: "0 0 16px rgba(162, 92, 255, 0.16)",
                 }}
               />
             </div>

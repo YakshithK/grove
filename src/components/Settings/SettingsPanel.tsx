@@ -39,7 +39,7 @@ export function SettingsPanel({ onReindex }: SettingsPanelProps) {
           <VishLogo size={22} />
           <div>
             <p className="text-xs font-mono tracking-[0.28em] text-frost/35 uppercase">vish</p>
-            <p className="text-sm font-semibold text-frost/85">settings</p>
+            <p className="text-sm font-semibold gradient-text-cyan">settings</p>
           </div>
         </div>
         <div className="text-xs font-mono text-frost/25 tracking-[0.12em]">
@@ -93,8 +93,8 @@ function GeneralTab() {
           <label className="block text-xs font-medium mb-2 text-frost/35 uppercase tracking-wider">
             Gemini embeddings
           </label>
-          <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-primary/12 bg-primary/5 text-sm">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-secondary/20 bg-secondary/10 text-sm">
+            <div className="w-2 h-2 rounded-full bg-gold animate-pulse" />
             <span className="text-frost/60">API key handled in backend</span>
           </div>
           <p className="text-[11px] text-frost/25 mt-2">
@@ -127,7 +127,7 @@ function IndexTab({
             <button
               onClick={onRescan}
               disabled={isRescanning}
-              className="px-5 py-2.5 rounded-xl font-semibold text-sm glass-strong border border-primary/20 hover:border-primary/35 transition-all disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl font-semibold text-sm glass-strong border border-secondary/24 hover:border-gold/45 transition-all disabled:opacity-50"
             >
               <span className="flex items-center gap-2">
                 <RefreshCw className={`w-4 h-4 ${isRescanning ? "animate-spin" : ""}`} />
@@ -161,7 +161,7 @@ function NeuralStatsTab() {
       <p className="text-xs text-frost/25 mb-4">Stylized signal (UI placeholder)</p>
 
       {/* Neural network visualization (stylized) */}
-      <div className="relative w-full h-40 rounded-xl bg-primary/5 border border-primary/12 overflow-hidden mb-4">
+      <div className="relative w-full h-40 rounded-xl bg-secondary/10 border border-secondary/18 overflow-hidden mb-4">
         {/* Animated dots representing neural nodes */}
         <svg className="w-full h-full" viewBox="0 0 400 160">
           {/* Connection lines */}
@@ -177,7 +177,7 @@ function NeuralStatsTab() {
                 y1={y1}
                 x2={x2}
                 y2={y2}
-                stroke="rgba(145, 249, 229, 0.10)"
+                stroke="rgba(122, 149, 255, 0.18)"
                 strokeWidth="1"
               />
             );
@@ -194,7 +194,7 @@ function NeuralStatsTab() {
                 cx={cx}
                 cy={cy}
                 r={r}
-                fill={isCyan ? "rgba(145, 249, 229, 0.35)" : "rgba(95, 221, 157, 0.35)"}
+                fill={isCyan ? "rgba(77, 225, 255, 0.38)" : "rgba(255, 157, 87, 0.34)"}
                 className="animate-pulse"
                 style={{ animationDelay: `${i * 200}ms` }}
               />

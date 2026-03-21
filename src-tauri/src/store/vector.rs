@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -33,13 +34,19 @@ impl VectorStore {
             .context("Failed to create vector storage directory")?;
 
         let index_path = storage_dir.join("vectors.json");
-        let index = if index_path.exists() {
+        let mut index = if index_path.exists() {
             let data = std::fs::read_to_string(&index_path)
                 .context("Failed to read vector index")?;
             serde_json::from_str(&data).unwrap_or_default()
         } else {
             VectorIndex::default()
         };
+
+        // Normalize previously persisted vectors so older indexes benefit
+        // from cheaper dot-product search without forcing a rebuild.
+        for point in &mut index.points {
+            normalize_in_place(&mut point.vector);
+        }
 
         Ok(Self {
             storage_path: storage_dir,
@@ -105,8 +112,12 @@ impl VectorStore {
         if points.is_empty() {
             return Ok(());
         }
+
         let mut idx = self.index.lock().await;
-        idx.points.extend(points);
+        idx.points.extend(points.into_iter().map(|mut point| {
+            normalize_in_place(&mut point.vector);
+            point
+        }));
         *self.dirty.lock().await = true;
 
         // Auto-flush every 200 points to avoid losing too much on crash
@@ -128,9 +139,9 @@ impl VectorStore {
         Ok(())
     }
 
-    /// Cosine similarity search — returns top `limit` results sorted by score.
-    /// Results below `MIN_SCORE_THRESHOLD` are discarded so only genuinely
-    /// relevant results are surfaced.
+    /// Similarity search over normalized vectors. Since both stored vectors
+    /// and query vectors are unit-normalized, cosine similarity reduces to a
+    /// simple dot product.
     pub async fn search(&self, query_vector: Vec<f32>, limit: usize) -> Result<Vec<ScoredPoint>> {
         const MIN_SCORE_THRESHOLD: f32 = 0.35;
 
@@ -140,15 +151,14 @@ impl VectorStore {
             return Ok(Vec::new());
         }
 
-        let query_norm = norm(&query_vector);
-        if query_norm == 0.0 {
+        let mut query_vector = query_vector;
+        if !normalize_in_place(&mut query_vector) {
             return Ok(Vec::new());
         }
 
         let mut scored: Vec<ScoredPoint> = idx.points.iter().filter_map(|p| {
             let dot: f32 = p.vector.iter().zip(query_vector.iter()).map(|(a, b)| a * b).sum();
-            let p_norm = norm(&p.vector);
-            let score = if p_norm > 0.0 { dot / (query_norm * p_norm) } else { 0.0 };
+            let score = dot;
             if score >= MIN_SCORE_THRESHOLD {
                 Some(ScoredPoint {
                     id: p.id,
@@ -160,9 +170,97 @@ impl VectorStore {
             }
         }).collect();
 
-        scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal));
         scored.truncate(limit);
         Ok(scored)
+    }
+
+    /// Lightweight lexical retrieval over filenames, paths, file types, and
+    /// extracted snippets. This complements dense search for exact terms like
+    /// symbols, filenames, acronyms, or error strings.
+    pub async fn lexical_search(&self, query: &str, limit: usize) -> Vec<ScoredPoint> {
+        let idx = self.index.lock().await;
+        if idx.points.is_empty() {
+            return Vec::new();
+        }
+
+        let query = query.trim().to_lowercase();
+        if query.is_empty() {
+            return Vec::new();
+        }
+
+        let tokens = tokenize(&query);
+        if tokens.is_empty() {
+            return Vec::new();
+        }
+
+        let mut scored: Vec<ScoredPoint> = idx
+            .points
+            .iter()
+            .filter_map(|point| {
+                let path = point
+                    .payload
+                    .get("path")
+                    .map(|s| s.to_lowercase())
+                    .unwrap_or_default();
+                let file_type = point
+                    .payload
+                    .get("file_type")
+                    .map(|s| s.to_lowercase())
+                    .unwrap_or_default();
+                let chunk_text = point
+                    .payload
+                    .get("chunk_text")
+                    .map(|s| s.to_lowercase())
+                    .unwrap_or_default();
+                let filename = path
+                    .rsplit(['/', '\\'])
+                    .next()
+                    .unwrap_or_default()
+                    .to_string();
+
+                let mut score = 0.0;
+
+                if !filename.is_empty() && filename.contains(&query) {
+                    score += 8.0;
+                }
+                if path.contains(&query) {
+                    score += 5.0;
+                }
+                if !chunk_text.is_empty() && chunk_text.contains(&query) {
+                    score += 3.5;
+                }
+
+                for token in &tokens {
+                    if filename.contains(token) {
+                        score += 3.0;
+                    }
+                    if file_type == *token {
+                        score += 2.5;
+                    }
+                    if path.contains(token) {
+                        score += 1.5;
+                    }
+                    if chunk_text.contains(token) {
+                        score += 1.2;
+                    }
+                }
+
+                if score > 0.0 {
+                    Some(ScoredPoint {
+                        id: point.id,
+                        score,
+                        payload: point.payload.clone(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal));
+        scored.truncate(limit);
+        scored
     }
 
     pub async fn point_count(&self) -> usize {
@@ -185,4 +283,42 @@ impl VectorStore {
 
 fn norm(v: &[f32]) -> f32 {
     v.iter().map(|x| x * x).sum::<f32>().sqrt()
+}
+
+fn normalize_in_place(v: &mut [f32]) -> bool {
+    let magnitude = norm(v);
+    if magnitude == 0.0 {
+        return false;
+    }
+
+    for value in v.iter_mut() {
+        *value /= magnitude;
+    }
+
+    true
+}
+
+fn tokenize(text: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+
+    for ch in text.chars() {
+        if ch.is_ascii_alphanumeric() {
+            current.push(ch);
+        } else if !current.is_empty() {
+            if current.len() >= 2 {
+                tokens.push(std::mem::take(&mut current));
+            } else {
+                current.clear();
+            }
+        }
+    }
+
+    if current.len() >= 2 {
+        tokens.push(current);
+    }
+
+    tokens.sort();
+    tokens.dedup();
+    tokens
 }

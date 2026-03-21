@@ -25,29 +25,16 @@ export function SearchBar({
   return (
     <div className={`w-full px-6 ${compact ? "py-3" : "py-4"}`}>
       <div className="relative max-w-2xl mx-auto">
-        {/* Subtle glass halo when focused */}
-        <div
-          className={`absolute -inset-3 rounded-3xl transition-all duration-700 pointer-events-none ${
-            isFocused || isLoading
-              ? "opacity-100"
-              : "opacity-0"
-          }`}
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(145, 249, 229, 0.16) 0%, rgba(95, 221, 157, 0.06) 55%, transparent 80%)",
-          }}
-        />
-
         {/* The Command Bar */}
         <form onSubmit={handleSubmit} className="relative group">
           <div className={`absolute inset-y-0 left-6 flex items-center pointer-events-none transition-all duration-500`}>
             {isLoading ? (
               <Loader2
-                className={`${compact ? "w-5 h-5" : "w-6 h-6"} text-accent animate-spin`}
+                className={`${compact ? "w-5 h-5" : "w-6 h-6"} text-primary animate-spin`}
               />
             ) : (
               <SearchIcon
-                className={`${compact ? "w-5 h-5" : "w-6 h-6"} text-frost/45 group-focus-within:text-accent transition-colors duration-300`}
+                className={`${compact ? "w-5 h-5" : "w-6 h-6"} text-frost/45 group-focus-within:text-gold transition-colors duration-300`}
               />
             )}
           </div>
@@ -63,8 +50,8 @@ export function SearchBar({
             } 
                        rounded-[2rem] text-frost placeholder:text-frost/30 font-display
                        focus:outline-none transition-all duration-500 glass-strong
-                       border ${isFocused ? "border-accent/70" : "border-accent/15"}
-                       ${isLoading ? "border-accent/45" : ""}`}
+                       border ${isFocused ? "border-gold/70" : "border-primary/20"}
+                       ${isLoading ? "border-secondary/45" : ""}`}
             autoFocus
           />
         </form>
