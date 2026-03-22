@@ -59,19 +59,10 @@ export function IndexingScreen({ onComplete, onCancel }: IndexingScreenProps) {
 
   return (
     <section className="window-shell animate-fade-in">
-      <div className="window-titlebar">
-        <div className="traffic-lights" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="text-[1.02rem] font-medium tracking-tight">Vish</div>
-      </div>
-
       <div className="window-panel grid min-h-[680px] grid-cols-1 md:grid-cols-[370px_1fr]">
         <aside className="border-b border-white/10 px-8 py-9 md:border-b-0 md:border-r">
           <div className="max-w-[240px]">
-            <h1 className="text-[3rem] font-semibold leading-[0.95] text-[var(--text-main)] md:text-[3.25rem]">
+            <h1 className="inter-ui text-[3rem] font-semibold leading-[0.95] text-[var(--text-main)] md:text-[3.25rem]">
               Indexing
             </h1>
             <p className="mt-4 max-w-[240px] text-[1rem] leading-8 text-[var(--text-soft)]">
@@ -96,7 +87,7 @@ export function IndexingScreen({ onComplete, onCancel }: IndexingScreenProps) {
                 <p className="mono-ui text-sm uppercase tracking-[0.24em] text-[var(--text-dim)]">
                   semantic indexing
                 </p>
-                <h2 className="mt-2 text-[2rem] font-semibold text-[var(--ink)]">
+                <h2 className="inter-ui mt-2 text-[2rem] font-semibold text-[var(--ink)]">
                   Building your local search map
                 </h2>
               </div>
@@ -104,7 +95,7 @@ export function IndexingScreen({ onComplete, onCancel }: IndexingScreenProps) {
 
             <div className="mt-10">
               <div className="mb-3 flex items-center justify-between text-[var(--ink)]">
-                <span className="text-lg font-medium">{progress}% complete</span>
+                <span className="inter-ui text-lg font-medium">{progress}% complete</span>
                 <span className="mono-ui text-sm">
                   {status.files_done.toLocaleString()} / {status.files_total.toLocaleString()}
                 </span>
@@ -126,7 +117,7 @@ export function IndexingScreen({ onComplete, onCancel }: IndexingScreenProps) {
             <div className="mt-8 flex justify-end">
               <button
                 onClick={handleCancel}
-                className="glass-surface flex items-center gap-2 rounded-2xl px-5 py-3 text-[var(--ink)] transition hover:bg-white/20"
+                className="glass-surface inter-ui flex items-center gap-2 rounded-2xl px-5 py-3 text-[var(--ink)] transition hover:bg-white/20"
               >
                 <XCircle className="h-4 w-4" />
                 Cancel

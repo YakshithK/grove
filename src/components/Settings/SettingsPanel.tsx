@@ -35,7 +35,7 @@ export function SettingsPanel({ onClose, onReindex }: SettingsPanelProps) {
           <p className="mono-ui text-xs uppercase tracking-[0.24em] text-[var(--text-dim)]">
             settings
           </p>
-          <h2 className="mt-1 text-2xl font-semibold text-[var(--text-main)]">
+          <h2 className="inter-ui mt-1 text-2xl font-semibold text-[var(--text-main)]">
             Configure Vish
           </h2>
         </div>
@@ -99,7 +99,7 @@ function PanelCard({
 }) {
   return (
     <div className="glass-surface rounded-[1.4rem] p-6">
-      <h3 className="text-xl font-semibold text-[var(--text-main)]">{title}</h3>
+      <h3 className="inter-ui text-xl font-semibold text-[var(--text-main)]">{title}</h3>
       {body && <p className="mt-2 max-w-xl text-[var(--text-soft)]">{body}</p>}
       {children}
     </div>
@@ -139,7 +139,7 @@ function IndexTab({
         <button
           onClick={onRescan}
           disabled={isRescanning}
-          className="rounded-2xl bg-[rgba(168,255,221,0.96)] px-5 py-3 text-base font-semibold text-[var(--ink)] shadow-[0_0_22px_rgba(155,255,215,0.32)] transition hover:brightness-105 disabled:opacity-60"
+          className="inter-ui rounded-2xl bg-[rgba(168,255,221,0.96)] px-5 py-3 text-base font-semibold text-[var(--ink)] shadow-[0_0_22px_rgba(155,255,215,0.32)] transition hover:brightness-105 disabled:opacity-60"
         >
           <span className="flex items-center gap-2">
             <RefreshCw className={`h-4 w-4 ${isRescanning ? "animate-spin" : ""}`} />
@@ -183,13 +183,13 @@ function NeuralStatsTab() {
           <p className="mono-ui text-xs uppercase tracking-[0.22em] text-[var(--text-dim)]">
             concepts mapped
           </p>
-          <p className="mt-3 text-4xl font-semibold text-[var(--text-main)]">14,203</p>
+          <p className="inter-ui mt-3 text-4xl font-semibold text-[var(--text-main)]">14,203</p>
         </div>
         <div className="rounded-2xl bg-white/6 px-4 py-5">
           <p className="mono-ui text-xs uppercase tracking-[0.22em] text-[var(--text-dim)]">
             embeddings created
           </p>
-          <p className="mt-3 text-4xl font-semibold text-[var(--text-main)]">184,512</p>
+          <p className="inter-ui mt-3 text-4xl font-semibold text-[var(--text-main)]">184,512</p>
         </div>
       </div>
     </PanelCard>

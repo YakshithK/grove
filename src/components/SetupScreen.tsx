@@ -7,6 +7,37 @@ interface SetupScreenProps {
   onStartIndexing: () => void;
 }
 
+function SelectedFolders({
+  folders,
+  className = "",
+}: {
+  folders: string[];
+  className?: string;
+}) {
+  if (folders.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={className}>
+      <p className="inter-ui text-sm font-semibold uppercase tracking-[0.14em] text-[var(--text-main)]/88">
+        Added Directories
+      </p>
+      <div className="setup-folder-list mt-3 flex flex-wrap gap-2 pr-1">
+        {folders.map((folder) => (
+          <div
+            key={folder}
+            className="glass-surface rounded-xl px-3 py-2 text-sm text-white/90"
+            title={folder}
+          >
+            {folder}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
   const [folderPath, setFolderPath] = useState("");
   const [folders, setFolders] = useState<string[]>([]);
@@ -60,43 +91,42 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
   };
 
   return (
-    <section className="window-shell animate-fade-in">
-      <div className="window-titlebar">
-        <div className="traffic-lights" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="text-[1.02rem] font-medium tracking-tight">Vish</div>
-      </div>
-
-      <div className="window-panel grid min-h-[680px] grid-cols-1 md:grid-cols-[370px_1fr]">
-        <aside className="border-b border-white/10 px-8 py-9 md:border-b-0 md:border-r">
-          <div className="max-w-[240px]">
-            <h1 className="text-[3rem] font-semibold leading-[0.95] text-[var(--text-main)] md:text-[3.25rem]">
+    <section className="window-shell setup-shell animate-fade-in">
+      <div className="window-panel grid h-full grid-cols-1 overflow-hidden md:grid-cols-[clamp(260px,28vw,340px)_minmax(0,1fr)]">
+        <aside className="hidden border-r border-white/10 px-8 py-9 md:block">
+          <div className="max-w-[290px]">
+            <h1 className="setup-hero-title inter-ui text-[3.5rem] font-semibold leading-[0.92] text-[var(--text-main)] md:text-[4rem]">
               Initial Setup
             </h1>
-            <p className="mt-4 max-w-[220px] text-[1rem] leading-8 text-[var(--text-soft)]">
-              Get started by choosing directories to index.
+            <p className="mt-5 max-w-[260px] text-[1.03rem] leading-8 text-[var(--text-soft)]">
+              Choose the directories Vish should index first so search is ready as soon as setup completes.
             </p>
           </div>
 
-          <ol className="relative mt-16 space-y-6 pl-7 text-[1.2rem] text-[var(--text-soft)]">
-            <li className="sidebar-step-active relative font-medium text-[var(--text-main)]">
-              <span className="mr-2">✓</span>1. Choose Directories
-            </li>
-            <li>2. Configure Settings</li>
-            <li className="text-[var(--text-dim)]">3. Indexing</li>
-          </ol>
+          <SelectedFolders folders={folders} className="mt-8 max-w-[290px]" />
         </aside>
 
-        <section className="px-8 py-9 md:px-9 md:py-10">
-          <h2 className="text-[2rem] font-semibold tracking-tight text-[var(--text-main)] md:text-[2.2rem]">
-            Choose Directories to Index
-          </h2>
-          <p className="mt-2 text-[1rem] leading-8 text-[var(--text-soft)]">
-            Drag and drop folders into the drop zone or manually input directory paths below.
-          </p>
+        <section className="setup-main-section px-5 py-5 md:px-9 md:py-10">
+          <div className="setup-mobile-summary glass-surface mb-6 rounded-[1.4rem] px-5 py-4 md:hidden">
+            <p className="setup-mobile-title inter-ui text-[2rem] font-semibold leading-tight text-[var(--text-main)]">
+              Initial Setup
+            </p>
+            <p className="mt-3 max-w-[30rem] text-[0.98rem] leading-7 text-[var(--text-soft)]">
+              Choose the directories Vish should index first so search can start immediately.
+            </p>
+
+            <SelectedFolders folders={folders} className="mt-5" />
+          </div>
+
+          <div className="setup-copy-column">
+            <h2 className="setup-primary-heading inter-ui text-[1.9rem] font-semibold tracking-tight text-[var(--text-main)] md:text-[2.2rem]">
+              Choose Directories to Index
+            </h2>
+            <p className="setup-primary-copy mt-3 max-w-[44rem] text-[1rem] leading-7 text-[var(--text-soft)] md:leading-8">
+              Drag and drop folders into the drop zone or manually input directory paths below.
+              Vish needs these locations now so indexing can start immediately.
+            </p>
+          </div>
 
           <button
             type="button"
@@ -107,22 +137,22 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
             onClick={() => inputRef.current?.focus()}
-            className={`glass-surface-strong glow-border mt-8 flex min-h-[300px] w-full flex-col items-center justify-center rounded-[1.7rem] px-6 text-center transition ${
+            className={`setup-dropzone glass-surface-strong glow-border mt-7 flex w-full flex-col items-center justify-center rounded-[1.7rem] px-6 text-center transition md:mt-8 ${
               isDragOver ? "scale-[1.01]" : ""
             }`}
           >
-            <VishLogo size={86} glowing />
-            <div className="mono-ui mt-7 text-[1.2rem] tracking-tight text-[rgba(31,42,33,0.88)] md:text-[1.7rem]">
+            <VishLogo size={72} glowing className="setup-dropzone-logo" />
+            <div className="setup-dropzone-copy mono-ui mt-6 tracking-tight text-[rgba(31,42,33,0.88)] md:mt-7">
               Drag &amp; Drop Folders Here
             </div>
           </button>
 
-          <div className="mt-9">
-            <h3 className="text-[1.2rem] font-semibold text-[var(--text-main)] md:text-[1.55rem]">
+          <div className="mt-8 md:mt-9">
+            <h3 className="setup-section-heading inter-ui setup-copy-column text-[1.15rem] font-semibold text-[var(--text-main)] md:text-[1.55rem]">
               Manually Input Directories (Optional)
             </h3>
 
-            <div className="mt-4 flex flex-col gap-3 md:flex-row">
+            <div className="setup-input-row setup-copy-column mt-4 flex flex-col gap-3 md:flex-row">
               <input
                 ref={inputRef}
                 type="text"
@@ -134,12 +164,12 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
                   }
                 }}
                 placeholder="/path/to/your/folder"
-                className="glass-surface h-14 flex-1 rounded-2xl px-5 text-lg text-[var(--ink)] outline-none placeholder:text-[rgba(36,49,38,0.42)]"
+                className="setup-directory-input glass-surface mono-ui h-14 flex-1 rounded-2xl px-5 text-base outline-none md:text-lg"
               />
               <button
                 type="button"
                 onClick={() => addFolder(folderPath)}
-                className="glass-surface flex h-14 items-center justify-center gap-2 rounded-2xl px-6 text-lg text-[var(--text-main)]"
+                className="glass-surface inter-ui flex h-14 items-center justify-center gap-2 rounded-2xl px-6 text-base font-medium text-[var(--text-main)] md:text-lg"
               >
                 <Plus className="h-5 w-5" />
                 Add
@@ -147,39 +177,18 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
             </div>
           </div>
 
-          {folders.length > 0 && (
-            <div className="mt-5 flex flex-wrap gap-2">
-              {folders.map((folder) => (
-                <div
-                  key={folder}
-                  className="glass-surface rounded-xl px-3 py-2 text-sm text-white/90"
-                  title={folder}
-                >
-                  {folder}
-                </div>
-              ))}
-            </div>
-          )}
-
           {error && (
-            <div className="mt-4 rounded-2xl border border-red-200/30 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+            <div className="setup-copy-column mt-4 rounded-2xl border border-red-200/30 bg-red-400/10 px-4 py-3 text-sm text-red-100">
               {error}
             </div>
           )}
 
-          <div className="mt-10 flex items-center justify-end gap-5 text-[1rem] text-[var(--text-soft)]">
-            <button type="button" className="transition hover:text-white">
-              Skip for Now
-            </button>
-            <span className="text-white/36">|</span>
-            <button type="button" className="transition hover:text-white">
-              Configure Later
-            </button>
+          <div className="setup-copy-column mt-auto flex justify-stretch pt-6 pb-8 md:justify-end md:pb-10">
             <button
               type="button"
               onClick={handleContinue}
               disabled={isLoading}
-              className="rounded-2xl bg-[rgba(168,255,221,0.96)] px-7 py-3 text-lg font-semibold text-[var(--ink)] shadow-[0_0_22px_rgba(155,255,215,0.42)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inter-ui w-full rounded-2xl bg-[rgba(168,255,221,0.96)] px-7 py-3 text-lg font-semibold text-[var(--ink)] shadow-[0_0_22px_rgba(155,255,215,0.42)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
             >
               {isLoading ? "Starting..." : "Continue"}
             </button>
