@@ -1,6 +1,5 @@
-import { useState } from "react";
-import { Settings, Database, Brain, RefreshCw } from "lucide-react";
-import { VishLogo } from "../VishLogo";
+import { useState, type ReactNode } from "react";
+import { Brain, Database, RefreshCw, Settings, X } from "lucide-react";
 
 interface SettingsPanelProps {
   onClose?: () => void;
@@ -9,68 +8,75 @@ interface SettingsPanelProps {
 
 type SettingsTab = "general" | "index" | "neural";
 
-export function SettingsPanel({ onReindex }: SettingsPanelProps) {
+export function SettingsPanel({ onClose, onReindex }: SettingsPanelProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("index");
   const [deepScan, setDeepScan] = useState(true);
   const [isRescanning, setIsRescanning] = useState(false);
 
-  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
-    { id: "general", label: "General", icon: <Settings className="w-4 h-4" /> },
-    { id: "index", label: "Index", icon: <Database className="w-4 h-4" /> },
-    { id: "neural", label: "Neural Stats", icon: <Brain className="w-4 h-4" /> },
+  const tabs: { id: SettingsTab; label: string; icon: ReactNode }[] = [
+    { id: "general", label: "General", icon: <Settings className="h-4 w-4" /> },
+    { id: "index", label: "Index", icon: <Database className="h-4 w-4" /> },
+    { id: "neural", label: "Neural", icon: <Brain className="h-4 w-4" /> },
   ];
 
   const handleRescan = async () => {
+    setIsRescanning(true);
     try {
-      setIsRescanning(true);
       onReindex();
-    } catch (e) {
-      console.error("Failed to re-scan:", e);
     } finally {
       setIsRescanning(false);
     }
   };
 
   return (
-    <div className="flex-1 flex flex-col animate-fade-in overflow-hidden">
-      {/* Minimal top strip */}
-      <div className="px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <VishLogo size={22} />
-          <div>
-            <p className="text-xs font-mono tracking-[0.28em] text-frost/35 uppercase">vish</p>
-            <p className="text-sm font-semibold gradient-text-cyan">settings</p>
-          </div>
+    <div className="flex min-h-[680px] flex-col">
+      <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+        <div>
+          <p className="mono-ui text-xs uppercase tracking-[0.24em] text-[var(--text-dim)]">
+            settings
+          </p>
+          <h2 className="mt-1 text-2xl font-semibold text-[var(--text-main)]">
+            Configure Vish
+          </h2>
         </div>
-        <div className="text-xs font-mono text-frost/25 tracking-[0.12em]">
-          local only
-        </div>
+
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="glass-surface flex h-11 w-11 items-center justify-center rounded-2xl text-[var(--text-main)]"
+            aria-label="Close settings"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
-      <div className="flex flex-1 gap-4 px-6 pb-6 overflow-hidden">
-        {/* Sidebar */}
-        <nav className="w-36 shrink-0 flex flex-col gap-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`sidebar-item flex items-center gap-2.5 ${
-                activeTab === tab.id ? "active" : ""
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+      <div className="grid flex-1 grid-cols-1 md:grid-cols-[220px_1fr]">
+        <nav className="border-b border-white/10 px-4 py-4 md:border-b-0 md:border-r">
+          <div className="flex gap-2 md:flex-col">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-left transition ${
+                  activeTab === tab.id
+                    ? "glass-surface text-[var(--text-main)]"
+                    : "text-[var(--text-soft)] hover:bg-white/5"
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </nav>
 
-        {/* Content area */}
-        <div className="flex-1 overflow-y-auto space-y-4">
+        <div className="p-6">
           {activeTab === "general" && <GeneralTab />}
           {activeTab === "index" && (
             <IndexTab
               deepScan={deepScan}
-              onDeepScanToggle={() => setDeepScan(!deepScan)}
+              onDeepScanToggle={() => setDeepScan((value) => !value)}
               onRescan={handleRescan}
               isRescanning={isRescanning}
             />
@@ -82,27 +88,34 @@ export function SettingsPanel({ onReindex }: SettingsPanelProps) {
   );
 }
 
-/* ===== Tab Content Components ===== */
+function PanelCard({
+  title,
+  body,
+  children,
+}: {
+  title: string;
+  body?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="glass-surface rounded-[1.4rem] p-6">
+      <h3 className="text-xl font-semibold text-[var(--text-main)]">{title}</h3>
+      {body && <p className="mt-2 max-w-xl text-[var(--text-soft)]">{body}</p>}
+      {children}
+    </div>
+  );
+}
 
 function GeneralTab() {
   return (
-    <div className="glass-card rounded-2xl p-5 animate-slide-in-left">
-      <h3 className="text-base font-semibold text-frost/90 mb-4">General</h3>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-medium mb-2 text-frost/35 uppercase tracking-wider">
-            Gemini embeddings
-          </label>
-          <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-secondary/20 bg-secondary/10 text-sm">
-            <div className="w-2 h-2 rounded-full bg-gold animate-pulse" />
-            <span className="text-frost/60">API key handled in backend</span>
-          </div>
-          <p className="text-[11px] text-frost/25 mt-2">
-            Vish sends only what it needs to embed. Your files remain local.
-          </p>
-        </div>
+    <PanelCard
+      title="General"
+      body="Embeddings are generated through Gemini while your indexed files remain local to this device."
+    >
+      <div className="mt-6 rounded-2xl bg-white/6 px-4 py-4 text-[var(--text-soft)]">
+        API key resolution is handled by the backend using compile-time and runtime fallbacks.
       </div>
-    </div>
+    </PanelCard>
   );
 }
 
@@ -118,106 +131,67 @@ function IndexTab({
   isRescanning: boolean;
 }) {
   return (
-    <div className="space-y-4">
-      {/* Index Management */}
-      <div className="glass-card rounded-2xl p-5 animate-slide-in-left">
-        <h3 className="text-base font-semibold text-frost mb-4">Index Management</h3>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <button
-              onClick={onRescan}
-              disabled={isRescanning}
-              className="px-5 py-2.5 rounded-xl font-semibold text-sm glass-strong border border-secondary/24 hover:border-gold/45 transition-all disabled:opacity-50"
-            >
-              <span className="flex items-center gap-2">
-                <RefreshCw className={`w-4 h-4 ${isRescanning ? "animate-spin" : ""}`} />
-                Re-scan Index
-              </span>
-            </button>
-          </div>
-          <div className="text-right">
-            <div className="flex items-center gap-3 mb-1">
-              <span className="text-xs text-frost/50">Deep Scan (OCR for Images)</span>
-              <button
-                onClick={onDeepScanToggle}
-                className={`toggle-switch ${deepScan ? "active" : ""}`}
-                aria-label="Toggle Deep Scan"
-              />
-            </div>
-            <p className="text-[10px] text-frost/25 max-w-[200px]">
-              Deep Scan analyzes text within images and PDFs.
-            </p>
-          </div>
-        </div>
+    <PanelCard
+      title="Index"
+      body="Rebuild the vector store or change scan behavior for future indexing runs."
+    >
+      <div className="mt-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <button
+          onClick={onRescan}
+          disabled={isRescanning}
+          className="rounded-2xl bg-[rgba(168,255,221,0.96)] px-5 py-3 text-base font-semibold text-[var(--ink)] shadow-[0_0_22px_rgba(155,255,215,0.32)] transition hover:brightness-105 disabled:opacity-60"
+        >
+          <span className="flex items-center gap-2">
+            <RefreshCw className={`h-4 w-4 ${isRescanning ? "animate-spin" : ""}`} />
+            Rebuild Index
+          </span>
+        </button>
+
+        <button
+          onClick={onDeepScanToggle}
+          className="glass-surface flex items-center justify-between gap-6 rounded-2xl px-4 py-3 text-[var(--text-main)]"
+        >
+          <span>
+            <span className="block font-medium">Deep Scan</span>
+            <span className="text-sm text-[var(--text-dim)]">OCR images and PDFs when available</span>
+          </span>
+          <span
+            className={`relative h-7 w-14 rounded-full transition ${
+              deepScan ? "bg-[rgba(168,255,221,0.92)]" : "bg-white/20"
+            }`}
+          >
+            <span
+              className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
+                deepScan ? "left-8" : "left-1"
+              }`}
+            />
+          </span>
+        </button>
       </div>
-    </div>
+    </PanelCard>
   );
 }
 
 function NeuralStatsTab() {
   return (
-    <div className="glass-card rounded-2xl p-5 animate-slide-in-left">
-      <h3 className="text-base font-semibold text-frost/90 mb-1">Neural Stats</h3>
-      <p className="text-xs text-frost/25 mb-4">Stylized signal (UI placeholder)</p>
-
-      {/* Neural network visualization (stylized) */}
-      <div className="relative w-full h-40 rounded-xl bg-secondary/10 border border-secondary/18 overflow-hidden mb-4">
-        {/* Animated dots representing neural nodes */}
-        <svg className="w-full h-full" viewBox="0 0 400 160">
-          {/* Connection lines */}
-          {[...Array(12)].map((_, i) => {
-            const x1 = 30 + (i % 4) * 100;
-            const y1 = 30 + Math.floor(i / 4) * 50;
-            const x2 = 70 + ((i + 1) % 4) * 100;
-            const y2 = 50 + Math.floor((i + 2) / 4) * 40;
-            return (
-              <line
-                key={`line-${i}`}
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                stroke="rgba(122, 149, 255, 0.18)"
-                strokeWidth="1"
-              />
-            );
-          })}
-          {/* Nodes */}
-          {[...Array(15)].map((_, i) => {
-            const cx = 20 + (i % 5) * 80 + Math.random() * 20;
-            const cy = 20 + Math.floor(i / 5) * 50 + Math.random() * 15;
-            const r = 2 + Math.random() * 3;
-            const isCyan = i % 3 !== 0;
-            return (
-              <circle
-                key={`node-${i}`}
-                cx={cx}
-                cy={cy}
-                r={r}
-                fill={isCyan ? "rgba(77, 225, 255, 0.38)" : "rgba(255, 157, 87, 0.34)"}
-                className="animate-pulse"
-                style={{ animationDelay: `${i * 200}ms` }}
-              />
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Stats */}
-      <div className="flex items-center justify-end gap-6">
-        <div className="text-right">
-          <p className="text-2xl font-bold gradient-text">14,203</p>
-          <p className="text-[10px] text-frost/30 uppercase tracking-wider">
+    <PanelCard
+      title="Neural Stats"
+      body="This is still a stylized placeholder panel, but it has been aligned with the new interface."
+    >
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-2xl bg-white/6 px-4 py-5">
+          <p className="mono-ui text-xs uppercase tracking-[0.22em] text-[var(--text-dim)]">
             concepts mapped
           </p>
+          <p className="mt-3 text-4xl font-semibold text-[var(--text-main)]">14,203</p>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-semibold text-frost/60">
-            Embeddings created:{" "}
-            <span className="text-frost/90 font-bold">184,512</span>
+        <div className="rounded-2xl bg-white/6 px-4 py-5">
+          <p className="mono-ui text-xs uppercase tracking-[0.22em] text-[var(--text-dim)]">
+            embeddings created
           </p>
+          <p className="mt-3 text-4xl font-semibold text-[var(--text-main)]">184,512</p>
         </div>
       </div>
-    </div>
+    </PanelCard>
   );
 }

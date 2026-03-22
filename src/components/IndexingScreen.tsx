@@ -35,8 +35,8 @@ export function IndexingScreen({ onComplete, onCancel }: IndexingScreenProps) {
         ) {
           onComplete();
         }
-      } catch (e) {
-        console.error("Failed to fetch status:", e);
+      } catch (error) {
+        console.error("Failed to fetch status:", error);
       }
     }, 1000);
 
@@ -52,74 +52,89 @@ export function IndexingScreen({ onComplete, onCancel }: IndexingScreenProps) {
     try {
       await invoke("stop_indexing");
       onCancel();
-    } catch (e) {
-      console.error("Failed to stop:", e);
+    } catch (error) {
+      console.error("Failed to stop indexing:", error);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden">
-      <div className="vish-bg" aria-hidden="true" />
+    <section className="window-shell animate-fade-in">
+      <div className="window-titlebar">
+        <div className="traffic-lights" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="text-[1.02rem] font-medium tracking-tight">Vish</div>
+      </div>
 
-      <div className="animate-fade-in-up relative z-10 flex flex-col items-center w-full max-w-xl">
-        <div className="glass-strong rounded-[2.2rem] p-8 w-full">
-          <div className="flex items-start justify-between gap-6 mb-6">
-            <div className="flex items-center gap-3">
-              <VishLogo size={22} />
+      <div className="window-panel grid min-h-[680px] grid-cols-1 md:grid-cols-[370px_1fr]">
+        <aside className="border-b border-white/10 px-8 py-9 md:border-b-0 md:border-r">
+          <div className="max-w-[240px]">
+            <h1 className="text-[3rem] font-semibold leading-[0.95] text-[var(--text-main)] md:text-[3.25rem]">
+              Indexing
+            </h1>
+            <p className="mt-4 max-w-[240px] text-[1rem] leading-8 text-[var(--text-soft)]">
+              Vish is mapping your files into semantic space.
+            </p>
+          </div>
+
+          <ol className="relative mt-16 space-y-6 pl-7 text-[1.2rem] text-[var(--text-soft)]">
+            <li>1. Choose Directories</li>
+            <li>2. Configure Settings</li>
+            <li className="sidebar-step-active relative font-medium text-[var(--text-main)]">
+              <span className="mr-2">✓</span>3. Indexing
+            </li>
+          </ol>
+        </aside>
+
+        <section className="flex flex-col justify-center px-8 py-9 md:px-12">
+          <div className="glass-surface-strong mx-auto w-full max-w-2xl rounded-[1.7rem] p-8 md:p-10">
+            <div className="flex items-center gap-5">
+              <VishLogo size={74} glowing />
               <div>
-                <p className="text-xs font-mono tracking-[0.28em] text-frost/35 uppercase">
-                  indexing
+                <p className="mono-ui text-sm uppercase tracking-[0.24em] text-[var(--text-dim)]">
+                  semantic indexing
                 </p>
-                <h2 className="text-lg font-semibold gradient-text-cyan">
-                  Mapping roots into vectors
+                <h2 className="mt-2 text-[2rem] font-semibold text-[var(--ink)]">
+                  Building your local search map
                 </h2>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-frost/55 font-mono">{progress}%</p>
-              <p className="text-[11px] text-frost/30 font-mono mt-1">
-                {status.files_done.toLocaleString()} / {status.files_total.toLocaleString()}
-              </p>
-            </div>
-          </div>
 
-          <div className="glass-card rounded-[1.6rem] p-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-mono text-frost/35 uppercase tracking-[0.18em]">
-                signal
-              </p>
-              <p className="text-xs font-mono text-frost/25">
-                cosine scan
-              </p>
+            <div className="mt-10">
+              <div className="mb-3 flex items-center justify-between text-[var(--ink)]">
+                <span className="text-lg font-medium">{progress}% complete</span>
+                <span className="mono-ui text-sm">
+                  {status.files_done.toLocaleString()} / {status.files_total.toLocaleString()}
+                </span>
+              </div>
+              <div className="h-4 overflow-hidden rounded-full bg-black/10">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,rgba(130,255,207,0.96),rgba(181,255,229,0.98))] shadow-[0_0_18px_rgba(155,255,215,0.42)] transition-all duration-700"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
-                style={{
-                  width: `${progress}%`,
-                  background: "linear-gradient(90deg, rgba(77, 225, 255, 0.95), rgba(162, 92, 255, 0.78), rgba(255, 157, 87, 0.78))",
-                  boxShadow: "0 0 16px rgba(162, 92, 255, 0.16)",
-                }}
-              />
-            </div>
-            {status.eta_secs && status.eta_secs > 0 && (
-              <p className="mt-3 text-[11px] text-frost/25 font-mono">
-                ~{Math.ceil(status.eta_secs / 60)} min remaining
-              </p>
-            )}
-          </div>
 
-          <div className="flex items-center justify-end mt-6">
-            <button
-              onClick={handleCancel}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-frost/40 hover:text-destructive transition-colors rounded-xl glass border border-transparent hover:border-destructive/20"
-            >
-              <XCircle className="w-4 h-4" />
-              cancel
-            </button>
+            <p className="mt-6 text-base leading-8 text-[rgba(36,49,38,0.78)]">
+              {status.eta_secs && status.eta_secs > 0
+                ? `Estimated time remaining: ${Math.ceil(status.eta_secs / 60)} minute(s).`
+                : "Estimating remaining time..."}
+            </p>
+
+            <div className="mt-8 flex justify-end">
+              <button
+                onClick={handleCancel}
+                className="glass-surface flex items-center gap-2 rounded-2xl px-5 py-3 text-[var(--ink)] transition hover:bg-white/20"
+              >
+                <XCircle className="h-4 w-4" />
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </section>
   );
 }

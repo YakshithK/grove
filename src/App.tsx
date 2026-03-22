@@ -1,133 +1,137 @@
+import { useState } from "react";
+import { Loader2, Settings } from "lucide-react";
 import { SetupScreen } from "./components/SetupScreen";
 import { IndexingScreen } from "./components/IndexingScreen";
 import { SearchBar } from "./components/SearchBar";
 import { ResultList } from "./components/ResultList";
 import { SettingsPanel } from "./components/Settings/SettingsPanel";
+import { VishLogo } from "./components/VishLogo";
 import { useSearch } from "./hooks/useSearch";
 import { useAppState } from "./hooks/useAppState";
-import { VishLogo } from "./components/VishLogo";
-import { Settings, Loader2 } from "lucide-react";
-import { useState } from "react";
-
 import "./App.css";
 
 function App() {
   const { screen, setScreen } = useAppState();
-  const { results, isSearching, error, search } = useSearch();
+  const { results, isSearching, error, search, query, setQuery } = useSearch();
   const [showSettings, setShowSettings] = useState(false);
 
-  // Loading state
-  if (screen === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-        <div className="vish-bg" aria-hidden="true" />
-        <div className="flex flex-col items-center gap-4 animate-fade-in z-10">
-          <VishLogo size={44} glowing />
-          <Loader2 className="w-5 h-5 text-accent/70 animate-spin" />
-          <p className="text-xs text-frost/40 font-mono tracking-wide">
-            indexing core...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const hasResults = results.length > 0;
+  const searchView = screen === "search";
 
-  // Setup screen
-  if (screen === "setup") {
-    return <SetupScreen onStartIndexing={() => setScreen("indexing")} />;
-  }
-
-  // Indexing screen
-  if (screen === "indexing") {
-    return (
-      <IndexingScreen
-        onComplete={() => setScreen("search")}
-        onCancel={() => setScreen("setup")}
-      />
-    );
-  }
-
-  // Search screen (main app)
   return (
-    <main className="min-h-screen flex flex-col relative overflow-hidden">
-      <div className="vish-bg" aria-hidden="true" />
+    <main className="forest-app flex min-h-screen items-center justify-center px-4 py-6 md:px-6 md:py-8">
+      <div className="backdrop-orb" aria-hidden="true" />
 
-      {/* Header */}
-      <header
-        className="flex items-center justify-between px-7 py-5 z-20"
-      >
-        <div className="flex items-center gap-3">
-          <VishLogo size={28} />
-          <span className="text-sm font-semibold tracking-widest uppercase gradient-text-cyan">
-            Vish
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className={`glass-strong p-2 rounded-xl transition-all duration-300 ${
-              showSettings
-                ? "border border-secondary/45"
-                : "border border-transparent"
-            }`}
-            aria-label="Settings"
-          >
-            <Settings className="w-5 h-5 text-primary/85" />
-          </button>
-        </div>
-      </header>
-
-      {error && (
-        <div className="mx-6 mb-2 px-4 py-3 rounded-xl glass-strong border border-destructive/25 text-destructive text-sm animate-fade-in">
-          {error}
+      {screen === "loading" && (
+        <div className="relative z-10 flex flex-col items-center gap-5 animate-fade-in">
+          <VishLogo size={62} glowing />
+          <Loader2 className="h-6 w-6 animate-spin text-white/80" />
+          <p className="mono-ui text-sm tracking-[0.22em] text-[var(--text-soft)] uppercase">
+            loading index
+          </p>
         </div>
       )}
 
-      {showSettings ? (
-        <SettingsPanel
-          onClose={() => setShowSettings(false)}
-          onReindex={() => {
-            setShowSettings(false);
-            setScreen("setup");
-          }}
+      {screen === "setup" && (
+        <SetupScreen onStartIndexing={() => setScreen("indexing")} />
+      )}
+
+      {screen === "indexing" && (
+        <IndexingScreen
+          onComplete={() => setScreen("search")}
+          onCancel={() => setScreen("setup")}
         />
-      ) : (
-        <div className="flex-1 flex flex-col z-10">
-          {/* Search section */}
-          <div
-            className={`flex flex-col transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              results.length === 0 && !isSearching
-                ? "flex-1 justify-center -mt-4"
-                : "pt-2"
-            }`}
-          >
-            {results.length === 0 && !isSearching && (
-              <div className="text-center px-8 animate-fade-in-up">
-                <p className="text-[11px] font-mono tracking-[0.25em] text-frost/35 uppercase">
-                  semantic sonar
-                </p>
-                <h2 className="mt-3 text-3xl md:text-4xl font-semibold text-frost/85 tracking-tight">
-                  find the thing you meant,
-                  <span className="block gradient-text">not the thing you typed</span>
-                </h2>
-                <p className="mt-4 text-frost/45 text-sm max-w-xl mx-auto leading-relaxed">
-                  Drop a folder, let Vish map it, then ask in natural language.
-                </p>
-              </div>
-            )}
+      )}
+
+      {searchView && !showSettings && !hasResults && !isSearching && (
+        <section className="relative z-10 flex min-h-[78vh] w-full flex-col">
+          <div className="flex items-start justify-between px-2 pt-1 md:px-4">
+            <div className="text-[2rem] font-light uppercase tracking-tight text-[var(--text-main)]">
+              VISH
+            </div>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="glass-surface flex h-11 w-11 items-center justify-center rounded-2xl text-white/85 transition hover:text-white"
+              aria-label="Open settings"
+            >
+              <Settings className="h-[18px] w-[18px]" />
+            </button>
+          </div>
+
+          <div className="flex flex-1 items-center justify-center">
             <SearchBar
               onSearch={search}
               isLoading={isSearching}
-              compact={results.length > 0 || isSearching}
+              value={query}
+              onValueChange={setQuery}
+              variant="hero"
             />
           </div>
+        </section>
+      )}
 
-          {results.length > 0 && (
-            <div className="animate-fade-in flex-1 overflow-hidden">
-              <ResultList results={results} />
+      {searchView && !showSettings && (hasResults || isSearching) && (
+        <section className="window-shell animate-fade-in">
+          <div className="window-titlebar">
+            <div className="traffic-lights traffic-lights-results" aria-hidden="true">
+              <span />
+              <span />
+              <span />
             </div>
-          )}
-        </div>
+            <div className="text-[1.05rem] font-medium tracking-tight">
+              Vish Search Results
+            </div>
+            <div className="ml-auto">
+              <button
+                onClick={() => setShowSettings(true)}
+                className="rounded-xl px-3 py-1.5 text-sm text-black/65 transition hover:bg-white/20 hover:text-black"
+                aria-label="Open settings"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="window-panel flex flex-col gap-4 p-4 md:p-6">
+            <SearchBar
+              onSearch={search}
+              isLoading={isSearching}
+              value={query}
+              onValueChange={setQuery}
+              variant="window"
+            />
+
+            {error && (
+              <div className="rounded-2xl border border-red-200/35 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+                {error}
+              </div>
+            )}
+
+            <ResultList results={results} />
+          </div>
+        </section>
+      )}
+
+      {searchView && showSettings && (
+        <section className="window-shell animate-fade-in">
+          <div className="window-titlebar">
+            <div className="traffic-lights" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="text-[1.05rem] font-medium tracking-tight">Vish</div>
+          </div>
+          <div className="window-panel min-h-[680px]">
+            <SettingsPanel
+              onClose={() => setShowSettings(false)}
+              onReindex={() => {
+                setShowSettings(false);
+                setScreen("setup");
+              }}
+            />
+          </div>
+        </section>
       )}
     </main>
   );

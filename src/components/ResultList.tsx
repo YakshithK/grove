@@ -1,199 +1,137 @@
+import { Fragment, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import {
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  FileType2,
+  Folder,
+  File as FileIcon,
+} from "lucide-react";
 import { SearchResult } from "../hooks/useSearch";
-import { FolderOpen, ExternalLink } from "lucide-react";
-import { useState } from "react";
 
 interface ResultListProps {
   results: SearchResult[];
 }
 
-function FileTypeBadge({ type }: { type: string }) {
-  const label = type.toLowerCase();
-  return (
-    <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-mono tracking-[0.22em] uppercase border border-secondary/25 bg-secondary/10 text-gold/90">
-      {label}
-    </span>
-  );
+function getFileName(path: string) {
+  return path.split("/").pop() || path.split("\\").pop() || path;
+}
+
+function getTypeIcon(type: string) {
+  const normalized = type.toLowerCase();
+
+  if (normalized.includes("pdf")) {
+    return FileType2;
+  }
+  if (normalized.includes("image") || ["png", "jpg", "jpeg", "webp"].includes(normalized)) {
+    return FileImage;
+  }
+  if (normalized.includes("sheet") || ["xls", "xlsx", "csv"].includes(normalized)) {
+    return FileSpreadsheet;
+  }
+  if (normalized.includes("folder")) {
+    return Folder;
+  }
+  if (normalized.includes("text") || normalized.includes("doc")) {
+    return FileText;
+  }
+
+  return FileIcon;
+}
+
+function highlightSnippet(text: string) {
+  const terms = ["semantic", "match", "contains", "budget", "references", "explores", "opportunities"];
+  const matcher = new RegExp(`(${terms.join("|")})`, "ig");
+
+  return text.split(matcher).map((part, index) => {
+    const isMatch = terms.some((term) => term.toLowerCase() === part.toLowerCase());
+    return isMatch ? <mark key={`${part}-${index}`}>{part}</mark> : <Fragment key={`${part}-${index}`}>{part}</Fragment>;
+  });
 }
 
 export function ResultList({ results }: ResultListProps) {
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(0);
+  const [selectedIdx, setSelectedIdx] = useState(1);
+
+  const handleOpen = async (path: string) => {
+    try {
+      await invoke("open_file", { path });
+    } catch (error) {
+      console.error("Failed to open file:", error);
+    }
+  };
 
   if (results.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-frost/40 animate-fade-in">
-        <div className="glass-strong rounded-[2rem] px-8 py-10 border border-primary/10 w-full max-w-xl text-center">
-          <p className="text-xs font-mono tracking-[0.22em] uppercase text-frost/35 mb-4">
-            no hits
+      <div className="glass-surface flex min-h-[420px] items-center justify-center rounded-[1.35rem] px-6 text-center">
+        <div>
+          <p className="mono-ui text-sm uppercase tracking-[0.22em] text-[var(--text-dim)]">
+            no results yet
           </p>
-          <p className="text-sm text-frost/60">
-            Adjust your phrasing and let Vish re-embed the intent.
+          <p className="mt-3 text-lg text-[var(--text-soft)]">
+            Submit a query to see semantic matches across your indexed files.
           </p>
         </div>
       </div>
     );
   }
 
-  const handleOpen = async (path: string) => {
-    try {
-      await invoke("open_file", { path });
-    } catch (e) {
-      console.error("Failed to open file:", e);
-    }
-  };
-
-  const handleReveal = async (path: string) => {
-    try {
-      await invoke("reveal_in_explorer", { path });
-    } catch (e) {
-      console.error("Failed to reveal file:", e);
-    }
-  };
-
-  // Normalize scores for display so the spread between results is visible.
-  // Raw cosine similarities cluster in a narrow band (e.g. 0.45-0.55) which
-  // looks like "similar %" to the user. Min-max normalization maps the best
-  // result to ~98% and worst to a proportionally lower value.
-  const maxScore = results.length > 0 ? results[0].score : 1;
-  const minScore = results.length > 1 ? results[results.length - 1].score : 0;
-  const scoreRange = maxScore - minScore;
-  const normalizeScore = (raw: number) => {
-    if (results.length <= 1 || scoreRange < 0.001) {
-      // Single result or all identical scores: show raw as capped at 98
-      return Math.min(Math.round(raw * 100), 98);
-    }
-    // Map to 40-98 range so even the lowest result doesn't look absurdly bad
-    return Math.round(40 + ((raw - minScore) / scoreRange) * 58);
-  };
-
-  const selectedResult =
-    selectedIdx !== null ? results[selectedIdx] : null;
-
   return (
-    <div className="flex flex-col gap-6 px-8 py-6 w-full max-w-7xl mx-auto lg:flex-row">
-      {/* Result cards */}
-      <div className="flex-1 flex flex-col gap-2.5 overflow-y-auto min-w-0">
-        <p className="text-xs text-frost/30 mb-1">
-          {results.length} result{results.length !== 1 ? "s" : ""}
-        </p>
-        {results.map((result, idx) => {
-          const relevance = normalizeScore(result.score);
-          const fileName =
-            result.path.split("/").pop() || result.path.split("\\").pop();
-          const isSelected = selectedIdx === idx;
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+      {results.slice(0, 6).map((result, idx) => {
+        const fileName = getFileName(result.path);
+        const Icon = getTypeIcon(result.file_type);
+        const snippet = result.text_excerpt
+          ? result.text_excerpt.slice(0, idx < 3 ? 80 : 58).trim()
+          : "contains key design documents and related semantic matches...";
+        const isSelected = idx === selectedIdx;
+        const featured = idx < 3;
 
-          return (
-            <div
-              key={`${result.path}-${idx}`}
-              className={`relative flex items-start gap-5 p-6 rounded-2xl glass-card cursor-pointer group animate-fade-in border
-                         ${isSelected ? "border-gold/45" : "border-transparent"}`}
-              onClick={() => {
-                setSelectedIdx(idx);
-                handleOpen(result.path);
-              }}
-            >
-              {/* File type badge */}
-              <div className="pt-1">
-                <FileTypeBadge type={result.file_type} />
-              </div>
+        return (
+          <button
+            type="button"
+            key={`${result.path}-${idx}`}
+            onClick={() => {
+              setSelectedIdx(idx);
+              handleOpen(result.path);
+            }}
+            className={`result-card glass-surface text-left ${
+              featured ? "min-h-[360px] md:min-h-[392px]" : "min-h-[164px]"
+            } ${isSelected ? "result-card-selected" : ""}`}
+          >
+            <div className="flex h-full flex-col">
+              <div className={`${featured ? "pt-4" : "flex items-start gap-5"}`}>
+                <div
+                  className={`flex items-center justify-center rounded-[1.1rem] bg-[rgba(161,255,218,0.12)] text-[rgba(156,255,216,0.94)] shadow-[0_0_28px_rgba(155,255,215,0.22)] ${
+                    featured ? "mx-auto h-24 w-24" : "h-20 w-20 shrink-0"
+                  }`}
+                >
+                  <Icon className={featured ? "h-12 w-12" : "h-10 w-10"} strokeWidth={1.75} />
+                </div>
 
-              {/* Center: filename + snippet */}
-              <div className="min-w-0 flex-1">
-                <h3 className="font-display font-semibold text-base md:text-lg text-frost/90 truncate mb-1">
-                  {fileName}
-                </h3>
-                {result.text_excerpt && (
-                  <div className="mt-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary/75 mb-1.5 block">
-                      semantic match
-                    </span>
-                    <p className="text-sm text-frost/60 line-clamp-4 leading-relaxed font-body">
-                      {result.text_excerpt.substring(0, 260)}...
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Right: metadata */}
-              <div className="flex flex-col items-end gap-2 shrink-0 text-right">
-                <span className="text-[12px] font-mono tracking-[0.18em] text-frost/70 border border-primary/20 bg-primary/10 px-2.5 py-1 rounded-full">
-                  {relevance}%
-                </span>
-                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleReveal(result.path);
-                    }}
-                    className="p-1.5 rounded-lg transition-all border border-transparent hover:border-secondary/20 hover:bg-white/5"
-                    title="Reveal in Explorer"
-                    aria-label="Reveal in Explorer"
+                <div className={featured ? "mt-8 text-center" : "flex-1"}>
+                  <h3
+                    className={`font-semibold tracking-tight text-[rgba(32,42,33,0.92)] ${
+                      featured ? "mx-auto max-w-[260px] text-[2.05rem] leading-[1.02]" : "text-[1.15rem]"
+                    }`}
                   >
-                    <FolderOpen className="w-3.5 h-3.5 text-frost/40" />
-                  </button>
-                  <div className="p-1.5 opacity-80">
-                    <ExternalLink className="w-3.5 h-3.5 text-frost/40" />
-                  </div>
+                    {fileName}
+                  </h3>
+
+                  <p
+                    className={`result-snippet mt-5 text-[rgba(236,242,237,0.96)] ${
+                      featured ? "text-[1.1rem] leading-[1.35]" : "text-[1rem] leading-[1.3]"
+                    }`}
+                  >
+                    <span className="text-[rgba(236,242,237,0.86)]">semantic match: </span>
+                    <span className="mono-ui">{highlightSnippet(`${snippet}...`)}</span>
+                  </p>
                 </div>
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Quick Look (small screens) */}
-      {selectedResult && (
-        <div className="w-full glass-strong rounded-[2rem] p-6 animate-fade-in-scale lg:hidden border border-white/5">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-gold/80">
-              quick look
-            </h4>
-            <FileTypeBadge type={selectedResult.file_type} />
-          </div>
-
-          <p className="text-base text-frost font-display font-semibold truncate mb-2">
-            {selectedResult.path.split("/").pop() ||
-              selectedResult.path.split("\\").pop()}
-          </p>
-          <p className="text-xs text-frost/35 truncate font-mono" title={selectedResult.path}>
-            {selectedResult.path}
-          </p>
-          {selectedResult.text_excerpt && (
-            <div className="mt-4 pt-4 border-t border-white/5">
-              <p className="text-sm text-frost/55 line-clamp-4 leading-relaxed font-body">
-                {selectedResult.text_excerpt.substring(0, 340)}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Quick Look (large screens) */}
-      {selectedResult && (
-        <div className="w-80 shrink-0 glass-strong rounded-[2rem] p-6 animate-fade-in-scale hidden lg:flex flex-col border border-white/5">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-gold/80">
-              quick look
-            </h4>
-            <FileTypeBadge type={selectedResult.file_type} />
-          </div>
-
-          <p className="text-base text-frost font-display font-semibold truncate mb-2">
-            {selectedResult.path.split("/").pop() ||
-              selectedResult.path.split("\\").pop()}
-          </p>
-          <p className="text-xs text-frost/30 truncate font-mono" title={selectedResult.path}>
-            {selectedResult.path}
-          </p>
-          {selectedResult.text_excerpt && (
-            <div className="mt-4 pt-4 border-t border-white/5">
-              <p className="text-xs text-frost/55 line-clamp-4 leading-relaxed font-body">
-                {selectedResult.text_excerpt.substring(0, 320)}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+          </button>
+        );
+      })}
     </div>
   );
 }

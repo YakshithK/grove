@@ -13,12 +13,16 @@ export interface SearchResult {
 }
 
 export function useSearch() {
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const search = useCallback(async (query: string) => {
-    if (!query.trim()) {
+    const trimmed = query.trim();
+    setQuery(query);
+
+    if (!trimmed) {
       setResults([]);
       return;
     }
@@ -28,7 +32,7 @@ export function useSearch() {
       setError(null);
       
       const res: SearchResult[] = await invoke("search", {
-        query,
+        query: trimmed,
         filters: null, // Stubbed out filters for v1. Can add UI binding later.
       });
 
@@ -42,6 +46,8 @@ export function useSearch() {
   }, []);
 
   return {
+    query,
+    setQuery,
     results,
     isSearching,
     error,

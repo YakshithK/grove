@@ -1,6 +1,6 @@
-import { useState, useRef, DragEvent } from "react";
+import { useRef, useState, DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowRight, FolderOpen, Check, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { VishLogo } from "./VishLogo";
 
 interface SetupScreenProps {
@@ -23,37 +23,20 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
     }
   };
 
-  const removeFolder = (path: string) => {
-    setFolders((prev) => prev.filter((f) => f !== path));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && folderPath.trim()) {
-      addFolder(folderPath);
-    }
-  };
-
-  const handleDragOver = (e: DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragOver(false);
-  };
-
   const handleDrop = (e: DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
     const items = e.dataTransfer.items;
-    if (items) {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.kind === "file") {
-          const file = item.getAsFile();
-          if (file) {
-            addFolder((file as any).path || file.name);
-          }
+    if (!items) {
+      return;
+    }
+
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
+      if (item.kind === "file") {
+        const file = item.getAsFile();
+        if (file) {
+          addFolder((file as { path?: string }).path || file.name);
         }
       }
     }
@@ -61,138 +44,148 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
 
   const handleContinue = async () => {
     if (folders.length === 0) {
-      setError("Please add at least one folder to index.");
+      setError("Choose at least one directory to index.");
       return;
     }
+
     try {
       setIsLoading(true);
       setError(null);
       await invoke("start_indexing", { folders });
       onStartIndexing();
-    } catch (e: any) {
-      setError(e.toString());
+    } catch (e: unknown) {
+      setError(String(e));
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden">
-      <div className="vish-bg" aria-hidden="true" />
+    <section className="window-shell animate-fade-in">
+      <div className="window-titlebar">
+        <div className="traffic-lights" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="text-[1.02rem] font-medium tracking-tight">Vish</div>
+      </div>
 
-      <div className="animate-fade-in-up relative z-10 flex flex-col items-center max-w-2xl w-full">
-        <div className="w-full glass-strong rounded-[2.2rem] p-8">
-          <div className="flex items-center justify-between gap-6 mb-6">
-            <div className="flex items-center gap-3">
-              <VishLogo size={28} glowing />
-              <div>
-                <p className="text-xs font-mono tracking-[0.28em] text-frost/35 uppercase">
-                  setup
-                </p>
-                <h1 className="text-2xl font-semibold gradient-text">
-                  Cast roots into Vish
-                </h1>
-              </div>
-            </div>
-            <p className="text-xs font-mono text-frost/35">
-              local-first indexing
+      <div className="window-panel grid min-h-[680px] grid-cols-1 md:grid-cols-[370px_1fr]">
+        <aside className="border-b border-white/10 px-8 py-9 md:border-b-0 md:border-r">
+          <div className="max-w-[240px]">
+            <h1 className="text-[3rem] font-semibold leading-[0.95] text-[var(--text-main)] md:text-[3.25rem]">
+              Initial Setup
+            </h1>
+            <p className="mt-4 max-w-[220px] text-[1rem] leading-8 text-[var(--text-soft)]">
+              Get started by choosing directories to index.
             </p>
           </div>
 
-          {/* Drop Zone */}
-          <div
-            className={`w-full rounded-[1.6rem] p-6 flex items-center justify-between cursor-pointer transition-all duration-500 drop-zone ${isDragOver ? "drag-over" : ""}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
+          <ol className="relative mt-16 space-y-6 pl-7 text-[1.2rem] text-[var(--text-soft)]">
+            <li className="sidebar-step-active relative font-medium text-[var(--text-main)]">
+              <span className="mr-2">✓</span>1. Choose Directories
+            </li>
+            <li>2. Configure Settings</li>
+            <li className="text-[var(--text-dim)]">3. Indexing</li>
+          </ol>
+        </aside>
+
+        <section className="px-8 py-9 md:px-9 md:py-10">
+          <h2 className="text-[2rem] font-semibold tracking-tight text-[var(--text-main)] md:text-[2.2rem]">
+            Choose Directories to Index
+          </h2>
+          <p className="mt-2 text-[1rem] leading-8 text-[var(--text-soft)]">
+            Drag and drop folders into the drop zone or manually input directory paths below.
+          </p>
+
+          <button
+            type="button"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
             onClick={() => inputRef.current?.focus()}
+            className={`glass-surface-strong glow-border mt-8 flex min-h-[300px] w-full flex-col items-center justify-center rounded-[1.7rem] px-6 text-center transition ${
+              isDragOver ? "scale-[1.01]" : ""
+            }`}
           >
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="w-12 h-12 rounded-2xl bg-secondary/10 border border-secondary/20 flex items-center justify-center shadow-inner">
-                <FolderOpen className="w-6 h-6 text-gold/90" />
-              </div>
-              <p className="text-sm text-frost/65 font-body truncate">
-                Drop folders here (or type a path below).
-              </p>
+            <VishLogo size={86} glowing />
+            <div className="mono-ui mt-7 text-[1.2rem] tracking-tight text-[rgba(31,42,33,0.88)] md:text-[1.7rem]">
+              Drag &amp; Drop Folders Here
             </div>
-            <ArrowRight className="w-5 h-5 text-primary/80 shrink-0" />
-          </div>
+          </button>
 
-          {/* Manual path input */}
-          <div className="w-full mt-5 relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={folderPath}
-              onChange={(e) => setFolderPath(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Directory path (e.g., /home/you/Documents)"
-              className="w-full px-5 py-4 rounded-2xl border border-primary/20 bg-black/10 text-frost placeholder:text-frost/25 focus:outline-none focus:border-gold/65 focus:ring-1 focus:ring-secondary/25 transition-all text-base font-mono shadow-inner"
-            />
-            {folderPath.trim() && (
+          <div className="mt-9">
+            <h3 className="text-[1.2rem] font-semibold text-[var(--text-main)] md:text-[1.55rem]">
+              Manually Input Directories (Optional)
+            </h3>
+
+            <div className="mt-4 flex flex-col gap-3 md:flex-row">
+              <input
+                ref={inputRef}
+                type="text"
+                value={folderPath}
+                onChange={(e) => setFolderPath(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && folderPath.trim()) {
+                    addFolder(folderPath);
+                  }
+                }}
+                placeholder="/path/to/your/folder"
+                className="glass-surface h-14 flex-1 rounded-2xl px-5 text-lg text-[var(--ink)] outline-none placeholder:text-[rgba(36,49,38,0.42)]"
+              />
               <button
+                type="button"
                 onClick={() => addFolder(folderPath)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl glass-strong border border-secondary/22 hover:border-gold/40 transition-all font-bold"
-                aria-label="Add folder"
+                className="glass-surface flex h-14 items-center justify-center gap-2 rounded-2xl px-6 text-lg text-[var(--text-main)]"
               >
-                <ArrowRight className="w-5 h-5 text-gold/90" />
+                <Plus className="h-5 w-5" />
+                Add
               </button>
-            )}
+            </div>
           </div>
 
-          {/* Folder list */}
           {folders.length > 0 && (
-            <div className="w-full mt-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-mono tracking-[0.22em] text-frost/35 uppercase">
-                  roots
-                </p>
-                <span className="text-xs text-frost/30">
-                  {folders.length} selected
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2.5">
-                {folders.map((folder) => (
-                  <div
-                    key={folder}
-                    className="group inline-flex items-center gap-2 px-3 py-2 rounded-xl glass-card border border-secondary/15"
-                  >
-                    <Check className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-xs text-frost/75 font-mono max-w-[320px] truncate">
-                      {folder}
-                    </span>
-                    <button
-                      onClick={() => removeFolder(folder)}
-                      className="p-1 rounded-lg hover:bg-white/5 text-frost/35 hover:text-frost/60 transition-all"
-                      aria-label="Remove folder"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {folders.map((folder) => (
+                <div
+                  key={folder}
+                  className="glass-surface rounded-xl px-3 py-2 text-sm text-white/90"
+                  title={folder}
+                >
+                  {folder}
+                </div>
+              ))}
             </div>
           )}
 
           {error && (
-            <div className="w-full mt-4 px-4 py-2 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs animate-fade-in">
+            <div className="mt-4 rounded-2xl border border-red-200/30 bg-red-400/10 px-4 py-3 text-sm text-red-100">
               {error}
             </div>
           )}
 
-          {/* Continue Button */}
-          <div className="mt-8 flex items-center justify-end">
+          <div className="mt-10 flex items-center justify-end gap-5 text-[1rem] text-[var(--text-soft)]">
+            <button type="button" className="transition hover:text-white">
+              Skip for Now
+            </button>
+            <span className="text-white/36">|</span>
+            <button type="button" className="transition hover:text-white">
+              Configure Later
+            </button>
             <button
+              type="button"
               onClick={handleContinue}
-              disabled={isLoading || folders.length === 0}
-              className="px-10 py-3 rounded-2xl font-semibold text-sm tracking-[0.22em] uppercase disabled:opacity-35 disabled:cursor-not-allowed
-                         glass-strong border border-secondary/24 hover:border-gold/50 transition-all flex items-center gap-2"
+              disabled={isLoading}
+              className="rounded-2xl bg-[rgba(168,255,221,0.96)] px-7 py-3 text-lg font-semibold text-[var(--ink)] shadow-[0_0_22px_rgba(155,255,215,0.42)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isLoading ? "initializing" : "continue"}
-              {!isLoading && <ArrowRight className="w-4 h-4 text-gold/90" />}
+              {isLoading ? "Starting..." : "Continue"}
             </button>
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </section>
   );
 }
