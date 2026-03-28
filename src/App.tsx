@@ -10,6 +10,14 @@ import { useSearch } from "./hooks/useSearch";
 import { useAppState } from "./hooks/useAppState";
 import "./App.css";
 
+const SEARCH_SUGGESTIONS = [
+  "meeting notes",
+  "project proposals",
+  "screenshots with errors",
+  "contracts or agreements",
+  "code about authentication",
+];
+
 function App() {
   const { screen, setScreen } = useAppState();
   const { results, isSearching, error, search, query, setQuery } = useSearch();
@@ -92,6 +100,21 @@ function App() {
           >
             ↵ search · files indexed locally
           </p>
+
+          {/* Suggestion chips — trigger search on click */}
+          <div className="hero-suggestions">
+            {SEARCH_SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                className="hero-suggestion-chip"
+                type="button"
+                aria-label={`Search for "${s}"`}
+                onClick={() => handleSearch(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
 
           {/* Settings gear — bottom-right */}
           <button
