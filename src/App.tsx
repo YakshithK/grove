@@ -62,6 +62,9 @@ function App() {
       {/* Search Hero — centered command-palette layout */}
       {showHero && (
         <section className="relative z-10 flex h-full w-full flex-col items-center justify-center">
+          {/* Ambient glow behind search — depth without noise */}
+          <div className="hero-ambient-glow" aria-hidden="true" />
+
           {/* Logo + wordmark */}
           <div className="flex flex-col items-center gap-3 mb-8">
             <VishLogo size={52} glowing />
@@ -137,28 +140,19 @@ function App() {
             </button>
           </div>
 
-          {/* Meta row */}
+          {/* Meta row — slim count, no border */}
           <div
             style={{
+              padding: "4px 18px 8px",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              padding: "6px 24px",
-              borderBottom: "1px solid var(--border-faint)",
             }}
           >
-            <span style={{ fontSize: "0.75rem", color: "var(--text-soft)" }}>
-              {isSearching ? (
-                <span style={{ color: "var(--text-dim)" }}>searching…</span>
-              ) : (
-                <>
-                  <span style={{ color: "var(--accent-dim-text)" }}>{results.length}</span>
-                  {" results"}
-                  {query && (
-                    <span style={{ color: "var(--text-dim)" }}> for "{query}"</span>
-                  )}
-                </>
-              )}
+            <span
+              className="mono-ui"
+              style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}
+            >
+              {isSearching ? "searching…" : `${results.length} results`}
             </span>
           </div>
 

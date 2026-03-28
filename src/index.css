@@ -185,6 +185,24 @@
   width: min(860px, calc(100vw - 64px));
 }
 
+/* Ambient radial glow behind the hero search area */
+/* Stacks behind siblings via DOM order (first child) — no z-index needed */
+.hero-ambient-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -54%); /* nudged up to align with search bar center */
+  width: min(760px, calc(100vw - 32px));
+  height: 440px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(155, 255, 215, 0.052) 0%,
+    rgba(155, 255, 215, 0.018) 42%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
 .forest-search-input {
   position: relative;
   width: 100%;
