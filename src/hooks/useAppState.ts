@@ -16,10 +16,12 @@ export function useAppState() {
         return;
       }
 
-      // Check if we have a persisted index on disk
-      const hasIndex: boolean = await invoke("check_index_exists");
+      // Show setup only if the user has never configured any folders.
+      // Checking vectors (check_index_exists) is wrong — an empty index still
+      // means the user has been through setup. Roots are the source of truth.
+      const roots: string[] = await invoke("get_indexed_roots");
 
-      if (hasIndex) {
+      if (roots.length > 0) {
         setScreen("search");
       } else {
         setScreen("setup");
