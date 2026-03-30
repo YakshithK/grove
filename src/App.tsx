@@ -36,6 +36,12 @@ function App() {
   };
 
   const handleSelectResult = (result: SearchResult) => {
+    if (selectedResult?.path === result.path) {
+      if (isCompactPreview) {
+        setIsPreviewOverlayOpen(true);
+      }
+      return;
+    }
     setSelectedResult(result);
     if (isCompactPreview) {
       setIsPreviewOverlayOpen(true);

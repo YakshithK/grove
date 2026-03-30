@@ -48,6 +48,11 @@ export function usePreview(path: string | null) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const normalizeError = (err: unknown) =>
+    String(err)
+      .replace(/^Error invoking remote method '[^']+':\s*/i, "")
+      .trim();
+
   useEffect(() => {
     if (!path) {
       setData(null);
@@ -76,7 +81,7 @@ export function usePreview(path: string | null) {
       })
       .catch((err: unknown) => {
         if (requestId !== requestIdRef.current) return;
-        setError(String(err));
+        setError(normalizeError(err));
         setData(null);
       })
       .finally(() => {

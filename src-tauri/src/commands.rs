@@ -1,15 +1,32 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::process::Command;
 use tauri::State;
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
+use tokio::sync::Semaphore;
 
 const MAX_PREVIEW_TEXT_BYTES: usize = 12 * 1024;
 const MAX_PREVIEW_TEXT_LINES: usize = 220;
 const MAX_PREVIEW_PDF_BYTES: usize = 20 * 1024 * 1024;
+const MAX_QUERY_CHARS: usize = 240;
+const MAX_QUERY_WORDS: usize = 32;
+const GEMINI_GLOBAL_PERMITS: usize = 3;
+const GEMINI_BACKGROUND_PERMITS: usize = 2;
+
+const SEARCH_RATE_LIMIT_MAX: usize = 10;
+const PREVIEW_RATE_LIMIT_MAX: usize = 30;
+const INDEX_RATE_LIMIT_MAX: usize = 2;
+const API_KEY_RATE_LIMIT_MAX: usize = 4;
+
+const SEARCH_RATE_LIMIT_WINDOW_SECS: u64 = 10;
+const PREVIEW_RATE_LIMIT_WINDOW_SECS: u64 = 10;
+const INDEX_RATE_LIMIT_WINDOW_SECS: u64 = 15;
+const API_KEY_RATE_LIMIT_WINDOW_SECS: u64 = 60;
 
 /// API key resolution order:
 /// 1. VISH_API_KEY baked in at compile time (CI builds)
@@ -58,6 +75,40 @@ pub struct AppState {
     pub watched_roots: Arc<tokio::sync::Mutex<Vec<PathBuf>>>,
     pub sync_status: Arc<tokio::sync::Mutex<String>>,
     pub watcher_generation: Arc<AtomicU32>,
+    pub security: Arc<tokio::sync::Mutex<SecurityState>>,
+    pub gemini_global_slots: Arc<Semaphore>,
+    pub gemini_background_slots: Arc<Semaphore>,
+}
+
+#[derive(Default)]
+pub struct SecurityState {
+    command_hits: HashMap<&'static str, VecDeque<Instant>>,
+}
+
+impl SecurityState {
+    fn check(&mut self, key: &'static str, max_hits: usize, window_secs: u64) -> Result<(), String> {
+        let now = Instant::now();
+        let window = Duration::from_secs(window_secs);
+        let hits = self.command_hits.entry(key).or_default();
+
+        while matches!(hits.front(), Some(front) if now.duration_since(*front) > window) {
+            hits.pop_front();
+        }
+
+        if hits.len() >= max_hits {
+            return Err(match key {
+                "search" => "Too many searches. Wait a moment and try again.",
+                "preview" => "Preview requests are coming in too fast. Slow down for a moment.",
+                "index" => "Indexing controls were used too quickly. Wait a moment and try again.",
+                "api_key" => "API key was updated too often. Wait a moment and try again.",
+                _ => "Too many requests. Wait a moment and try again.",
+            }
+            .to_string());
+        }
+
+        hits.push_back(now);
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -68,6 +119,8 @@ struct WatchRuntime {
     vector_store: Arc<crate::store::vector::VectorStore>,
     http_client: reqwest::Client,
     api_key: Arc<tokio::sync::Mutex<String>>,
+    gemini_global_slots: Arc<Semaphore>,
+    gemini_background_slots: Arc<Semaphore>,
 }
 
 #[derive(Clone)]
@@ -81,6 +134,8 @@ struct IndexingRuntime {
     api_key: Arc<tokio::sync::Mutex<String>>,
     sync_status: Arc<tokio::sync::Mutex<String>>,
     watch: WatchRuntime,
+    gemini_global_slots: Arc<Semaphore>,
+    gemini_background_slots: Arc<Semaphore>,
 }
 
 impl AppState {
@@ -104,6 +159,9 @@ impl AppState {
             watched_roots: Arc::new(tokio::sync::Mutex::new(watched_roots)),
             sync_status: Arc::new(tokio::sync::Mutex::new("idle".to_string())),
             watcher_generation: Arc::new(AtomicU32::new(0)),
+            security: Arc::new(tokio::sync::Mutex::new(SecurityState::default())),
+            gemini_global_slots: Arc::new(Semaphore::new(GEMINI_GLOBAL_PERMITS)),
+            gemini_background_slots: Arc::new(Semaphore::new(GEMINI_BACKGROUND_PERMITS)),
         }
     }
 
@@ -115,6 +173,8 @@ impl AppState {
             vector_store: self.vector_store.clone(),
             http_client: self.http_client.clone(),
             api_key: self.api_key.clone(),
+            gemini_global_slots: self.gemini_global_slots.clone(),
+            gemini_background_slots: self.gemini_background_slots.clone(),
         }
     }
 
@@ -129,6 +189,8 @@ impl AppState {
             api_key: self.api_key.clone(),
             sync_status: self.sync_status.clone(),
             watch: self.watch_runtime(),
+            gemini_global_slots: self.gemini_global_slots.clone(),
+            gemini_background_slots: self.gemini_background_slots.clone(),
         }
     }
 }
@@ -205,6 +267,91 @@ fn canonicalize_root(path: &Path) -> Result<PathBuf, String> {
 
     std::fs::canonicalize(path)
         .map_err(|error| format!("Failed to access {}: {}", path.display(), error))
+}
+
+fn canonicalize_file_access(path: &str) -> Result<PathBuf, String> {
+    let raw = Path::new(path.trim());
+    if !raw.exists() {
+        return Err("File no longer exists.".to_string());
+    }
+
+    std::fs::canonicalize(raw)
+        .map_err(|error| format!("Failed to access {}: {}", raw.display(), error))
+}
+
+async fn ensure_file_within_indexed_roots(path: &Path, roots: &tokio::sync::Mutex<Vec<PathBuf>>) -> Result<(), String> {
+    let watched_roots = roots.lock().await;
+    if watched_roots.is_empty() {
+        return Err("No indexed roots are configured.".to_string());
+    }
+
+    if watched_roots.iter().any(|root| path.starts_with(root)) {
+        Ok(())
+    } else {
+        Err("Access denied for files outside indexed folders.".to_string())
+    }
+}
+
+async fn check_command_rate_limit(
+    security: &tokio::sync::Mutex<SecurityState>,
+    key: &'static str,
+    max_hits: usize,
+    window_secs: u64,
+) -> Result<(), String> {
+    security.lock().await.check(key, max_hits, window_secs)
+}
+
+fn sanitize_query(query: &str) -> Result<String, String> {
+    let normalized = query.split_whitespace().collect::<Vec<_>>().join(" ");
+    if normalized.is_empty() {
+        return Err("Enter a search query first.".to_string());
+    }
+    if normalized.chars().count() > MAX_QUERY_CHARS {
+        return Err("Search query is too long.".to_string());
+    }
+    if normalized.split_whitespace().count() > MAX_QUERY_WORDS {
+        return Err("Search query has too many terms.".to_string());
+    }
+    Ok(normalized)
+}
+
+async fn batch_embed_with_limits(
+    client: &reqwest::Client,
+    api_key: &str,
+    requests: Vec<crate::embedding::types::EmbedRequest>,
+    global_slots: Arc<Semaphore>,
+    background_slots: Option<Arc<Semaphore>>,
+) -> anyhow::Result<Vec<Vec<f32>>> {
+    let _background_permit = if let Some(slots) = background_slots {
+        Some(
+            slots
+                .acquire_owned()
+                .await
+                .map_err(|_| anyhow::anyhow!("Gemini background queue unavailable"))?,
+        )
+    } else {
+        None
+    };
+
+    let _global_permit = global_slots
+        .acquire_owned()
+        .await
+        .map_err(|_| anyhow::anyhow!("Gemini queue unavailable"))?;
+
+    crate::embedding::client::batch_embed(client, api_key, requests).await
+}
+
+async fn embed_query_with_limits(
+    client: &reqwest::Client,
+    api_key: &str,
+    query: &str,
+    global_slots: Arc<Semaphore>,
+) -> anyhow::Result<Vec<f32>> {
+    let _global_permit = global_slots
+        .acquire_owned()
+        .await
+        .map_err(|_| anyhow::anyhow!("Gemini queue unavailable"))?;
+    crate::embedding::client::embed_query(client, api_key, query).await
 }
 
 fn build_image_thumbnail(path: &str, file_type: &str) -> Option<String> {
@@ -331,19 +478,25 @@ fn mime_for_preview(ext: &str) -> &'static str {
 }
 
 #[tauri::command]
-pub async fn get_preview(path: String) -> Result<crate::search::PreviewPayload, String> {
-    let preview_path = PathBuf::from(&path);
+pub async fn get_preview(path: String, state: State<'_, AppState>) -> Result<crate::search::PreviewPayload, String> {
+    check_command_rate_limit(
+        &state.security,
+        "preview",
+        PREVIEW_RATE_LIMIT_MAX,
+        PREVIEW_RATE_LIMIT_WINDOW_SECS,
+    )
+    .await?;
+    get_preview_impl(path, state.watched_roots.clone()).await
+}
+
+async fn get_preview_impl(
+    path: String,
+    watched_roots: Arc<tokio::sync::Mutex<Vec<PathBuf>>>,
+) -> Result<crate::search::PreviewPayload, String> {
+    let preview_path = canonicalize_file_access(&path)?;
+    ensure_file_within_indexed_roots(&preview_path, &watched_roots).await?;
     let title = preview_title(&preview_path);
     let file_type = preview_file_type(&preview_path);
-
-    if !preview_path.exists() {
-        return Ok(crate::search::PreviewPayload::Error {
-            title,
-            path,
-            file_type,
-            message: "File no longer exists.".to_string(),
-        });
-    }
 
     let metadata = std::fs::metadata(&preview_path)
         .map_err(|error| format!("Failed loading preview metadata: {}", error))?;
@@ -358,7 +511,17 @@ pub async fn get_preview(path: String) -> Result<crate::search::PreviewPayload, 
         });
     }
 
-    let ext = file_type.as_str();
+    let ext = file_type.clone();
+    let ext = ext.as_str();
+    if !crate::indexer::crawler::is_allowed_file(&preview_path) {
+        return Ok(crate::search::PreviewPayload::Unsupported {
+            title,
+            path,
+            file_type,
+            message: "Preview is not available for this file type.".to_string(),
+            text_excerpt: None,
+        });
+    }
 
     if matches!(ext, "png" | "jpg" | "jpeg" | "webp") {
         return build_image_thumbnail(&path, ext)
@@ -432,6 +595,8 @@ async fn index_single_file(
     http_client: reqwest::Client,
     api_key_arc: Arc<tokio::sync::Mutex<String>>,
     next_point_id: Arc<AtomicU32>,
+    gemini_global_slots: Arc<Semaphore>,
+    gemini_background_slots: Arc<Semaphore>,
 ) {
     let ext = fp
         .extension()
@@ -462,7 +627,15 @@ async fn index_single_file(
 
         let filename = fp.file_name().unwrap_or_default().to_string_lossy();
         let req = crate::embedding::client::make_binary_request(&b64, mime, Some(&filename));
-        match crate::embedding::client::batch_embed(&http_client, &api_key, vec![req]).await {
+        match batch_embed_with_limits(
+            &http_client,
+            &api_key,
+            vec![req],
+            gemini_global_slots.clone(),
+            Some(gemini_background_slots.clone()),
+        )
+        .await
+        {
             Ok(embeddings) => {
                 if let Some(embedding) = embeddings.into_iter().next() {
                     let point_id = next_point_id.fetch_add(1, Ordering::SeqCst) as u64;
@@ -515,15 +688,15 @@ async fn index_single_file(
 
     let filename = fp.file_name().unwrap_or_default().to_string_lossy();
     for batch in chunks.chunks(EMBED_BATCH_SIZE) {
-        let requests: Vec<_> = batch
-            .iter()
-            .map(|chunk| crate::embedding::client::make_text_request(chunk, Some(&filename)))
-            .collect();
-
-        let embeddings = match crate::embedding::client::batch_embed(
+        let embeddings = match batch_embed_with_limits(
             &http_client,
             &api_key,
-            requests,
+            batch
+                .iter()
+                .map(|chunk| crate::embedding::client::make_text_request(chunk, Some(&filename)))
+                .collect(),
+            gemini_global_slots.clone(),
+            Some(gemini_background_slots.clone()),
         )
         .await
         {
@@ -565,6 +738,8 @@ async fn process_watch_actions(
     http_client: reqwest::Client,
     api_key_arc: Arc<tokio::sync::Mutex<String>>,
     sync_status: Arc<tokio::sync::Mutex<String>>,
+    gemini_global_slots: Arc<Semaphore>,
+    gemini_background_slots: Arc<Semaphore>,
 ) {
     if actions.is_empty() {
         return;
@@ -591,6 +766,8 @@ async fn process_watch_actions(
                     http_client.clone(),
                     api_key_arc.clone(),
                     next_point_id.clone(),
+                    gemini_global_slots.clone(),
+                    gemini_background_slots.clone(),
                 )
                 .await;
             }
@@ -626,6 +803,8 @@ async fn restart_watcher(runtime: WatchRuntime) {
     let http_client = runtime.http_client.clone();
     let api_key = runtime.api_key.clone();
     let sync_status = runtime.sync_status.clone();
+    let gemini_global_slots = runtime.gemini_global_slots.clone();
+    let gemini_background_slots = runtime.gemini_background_slots.clone();
     let generation_counter = runtime.watcher_generation.clone();
     let handler: Arc<dyn Fn(Vec<crate::indexer::watcher::WatchAction>) + Send + Sync> =
         Arc::new(move |actions| {
@@ -633,9 +812,19 @@ async fn restart_watcher(runtime: WatchRuntime) {
             let http_client = http_client.clone();
             let api_key = api_key.clone();
             let sync_status = sync_status.clone();
+            let gemini_global_slots = gemini_global_slots.clone();
+            let gemini_background_slots = gemini_background_slots.clone();
             tauri::async_runtime::spawn(async move {
-                process_watch_actions(actions, vector_store, http_client, api_key, sync_status)
-                    .await;
+                process_watch_actions(
+                    actions,
+                    vector_store,
+                    http_client,
+                    api_key,
+                    sync_status,
+                    gemini_global_slots,
+                    gemini_background_slots,
+                )
+                .await;
             });
         });
 
@@ -702,6 +891,8 @@ fn spawn_indexing_job(paths: Vec<PathBuf>, runtime: IndexingRuntime, clear_exist
             let indexed_files = runtime.indexed_files.clone();
             let next_point_id = next_point_id.clone();
             let fp = file_path.clone();
+            let gemini_global_slots = runtime.gemini_global_slots.clone();
+            let gemini_background_slots = runtime.gemini_background_slots.clone();
 
             handles.push(tokio::spawn(async move {
                 let _permit = permit;
@@ -711,6 +902,8 @@ fn spawn_indexing_job(paths: Vec<PathBuf>, runtime: IndexingRuntime, clear_exist
                     http_client,
                     api_key_arc,
                     next_point_id,
+                    gemini_global_slots,
+                    gemini_background_slots,
                 )
                 .await;
 
@@ -738,7 +931,14 @@ fn spawn_indexing_job(paths: Vec<PathBuf>, runtime: IndexingRuntime, clear_exist
 
 #[tauri::command]
 pub async fn set_api_key(key: String, state: State<'_, AppState>) -> Result<(), String> {
-    *state.api_key.lock().await = key;
+    check_command_rate_limit(
+        &state.security,
+        "api_key",
+        API_KEY_RATE_LIMIT_MAX,
+        API_KEY_RATE_LIMIT_WINDOW_SECS,
+    )
+    .await?;
+    *state.api_key.lock().await = key.trim().to_string();
     Ok(())
 }
 
@@ -765,6 +965,19 @@ pub async fn get_point_count(state: State<'_, AppState>) -> Result<usize, String
 
 #[tauri::command]
 pub async fn start_indexing(folders: Vec<String>, state: State<'_, AppState>) -> Result<(), String> {
+    check_command_rate_limit(
+        &state.security,
+        "index",
+        INDEX_RATE_LIMIT_MAX,
+        INDEX_RATE_LIMIT_WINDOW_SECS,
+    )
+    .await?;
+
+    let current_status = state.status.lock().await.clone();
+    if current_status == "running" || current_status == "paused" {
+        return Err("Indexing is already in progress.".to_string());
+    }
+
     if folders.is_empty() {
         return Err("No folders provided to index.".to_string());
     }
@@ -838,6 +1051,19 @@ pub async fn get_indexed_roots(state: State<'_, AppState>) -> Result<Vec<String>
 
 #[tauri::command]
 pub async fn add_indexed_root(path: String, state: State<'_, AppState>) -> Result<(), String> {
+    check_command_rate_limit(
+        &state.security,
+        "index",
+        INDEX_RATE_LIMIT_MAX,
+        INDEX_RATE_LIMIT_WINDOW_SECS,
+    )
+    .await?;
+
+    let current_status = state.status.lock().await.clone();
+    if current_status == "running" || current_status == "paused" {
+        return Err("Wait for the current indexing job to finish before adding another folder.".to_string());
+    }
+
     let root = canonicalize_root(Path::new(path.trim()))?;
 
     {
@@ -857,6 +1083,19 @@ pub async fn add_indexed_root(path: String, state: State<'_, AppState>) -> Resul
 
 #[tauri::command]
 pub async fn remove_indexed_root(path: String, state: State<'_, AppState>) -> Result<(), String> {
+    check_command_rate_limit(
+        &state.security,
+        "index",
+        INDEX_RATE_LIMIT_MAX,
+        INDEX_RATE_LIMIT_WINDOW_SECS,
+    )
+    .await?;
+
+    let current_status = state.status.lock().await.clone();
+    if current_status == "running" || current_status == "paused" {
+        return Err("Wait for the current indexing job to finish before removing a folder.".to_string());
+    }
+
     let root = PathBuf::from(path.trim());
     {
         let mut watched_roots = state.watched_roots.lock().await;
@@ -881,6 +1120,19 @@ pub async fn remove_indexed_root(path: String, state: State<'_, AppState>) -> Re
 
 #[tauri::command]
 pub async fn reset_index(state: State<'_, AppState>) -> Result<(), String> {
+    check_command_rate_limit(
+        &state.security,
+        "index",
+        INDEX_RATE_LIMIT_MAX,
+        INDEX_RATE_LIMIT_WINDOW_SECS,
+    )
+    .await?;
+
+    let current_status = state.status.lock().await.clone();
+    if current_status == "running" || current_status == "paused" {
+        return Err("Stop indexing before resetting the index.".to_string());
+    }
+
     {
         let mut watched_roots = state.watched_roots.lock().await;
         watched_roots.clear();
@@ -918,6 +1170,15 @@ pub async fn search(
     const FILE_RESULT_LIMIT: usize = 20;
     const CHUNK_CANDIDATE_LIMIT: usize = 100;
     const RRF_K: f32 = 60.0;
+    check_command_rate_limit(
+        &state.security,
+        "search",
+        SEARCH_RATE_LIMIT_MAX,
+        SEARCH_RATE_LIMIT_WINDOW_SECS,
+    )
+    .await?;
+
+    let query = sanitize_query(&query)?;
     let query_features = QueryFeatures::from_query(&query);
 
     let api_key = state.api_key.lock().await.clone();
@@ -925,10 +1186,19 @@ pub async fn search(
         return Err("No Gemini API key set.".to_string());
     }
 
+    if !state.vector_store.has_points().await {
+        return Ok(Vec::new());
+    }
+
     // 1. Embed the query via Gemini
-    let query_vector = crate::embedding::client::embed_query(
-        &state.http_client, &api_key, &query,
-    ).await.map_err(|e| format!("Failed to embed query: {}", e))?;
+    let query_vector = embed_query_with_limits(
+        &state.http_client,
+        &api_key,
+        &query,
+        state.gemini_global_slots.clone(),
+    )
+    .await
+    .map_err(|e| format!("Failed to embed query: {}", e))?;
 
     // 2. Search local vector store
     let scored_points = state.vector_store

@@ -328,6 +328,7 @@ export function SettingsPanel({ onClose, onReindex }: SettingsPanelProps) {
                 value={newRoot}
                 onChange={(e) => setNewRoot(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+                disabled={isBusy}
                 placeholder="/path/to/folder"
                 className="mono-ui"
                 style={{
@@ -340,6 +341,7 @@ export function SettingsPanel({ onClose, onReindex }: SettingsPanelProps) {
                   background: "rgba(255,255,255,0.03)",
                   border: "1px solid var(--border-faint)",
                   outline: "none",
+                  opacity: isBusy ? 0.6 : 1,
                 }}
               />
               <button

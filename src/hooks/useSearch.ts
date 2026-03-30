@@ -18,6 +18,11 @@ export function useSearch() {
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const normalizeError = (err: unknown) =>
+    String(err)
+      .replace(/^Error invoking remote method '[^']+':\s*/i, "")
+      .trim();
+
   const search = useCallback(async (query: string) => {
     const trimmed = query.trim();
     setQuery(query);
@@ -39,7 +44,7 @@ export function useSearch() {
       setResults(res);
     } catch (e: any) {
       console.error("Search failed:", e);
-      setError(e.toString());
+      setError(normalizeError(e));
     } finally {
       setIsSearching(false);
     }
