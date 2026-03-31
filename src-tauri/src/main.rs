@@ -31,6 +31,7 @@ fn run() -> anyhow::Result<()> {
     let app_state = commands::AppState::new(data_dir)?;
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
         .setup(|app| {
             let state = app.state::<commands::AppState>();

@@ -1,5 +1,6 @@
 import { useRef, useState, DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { Plus, Folder, X } from "lucide-react";
 
 interface SetupScreenProps {
@@ -60,6 +61,23 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
     }
   };
 
+  const handlePickFolders = async () => {
+    try {
+      const selection = await open({
+        directory: true,
+        multiple: true,
+        title: "Select folders to index",
+      });
+
+      if (!selection) return;
+
+      const picked = Array.isArray(selection) ? selection : [selection];
+      picked.forEach((path) => addFolder(path));
+    } catch (e: unknown) {
+      setError(String(e));
+    }
+  };
+
   return (
     <div
       className="animate-fade-in"
@@ -104,7 +122,7 @@ export function SetupScreen({ onStartIndexing }: SetupScreenProps) {
         onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => inputRef.current?.focus()}
+        onClick={handlePickFolders}
         className={`grove-dropzone ${isDragOver ? "grove-dropzone-active" : ""}`}
         style={{ width: "100%", padding: "40px 24px", textAlign: "center" }}
       >
