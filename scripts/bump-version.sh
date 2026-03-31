@@ -19,6 +19,11 @@ echo "Bumping version to $NEW_VERSION ..."
 sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" "$ROOT/package.json"
 echo "  ✓ package.json"
 
+# 1b. package-lock.json (root metadata entries)
+sed -i "0,/\"version\": \".*\"/s//\"version\": \"$NEW_VERSION\"/" "$ROOT/package-lock.json"
+sed -i "0,/\"version\": \".*\"/s//\"version\": \"$NEW_VERSION\"/" "$ROOT/package-lock.json"
+echo "  ✓ package-lock.json"
+
 # 2. src-tauri/tauri.conf.json
 sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" "$ROOT/src-tauri/tauri.conf.json"
 echo "  ✓ src-tauri/tauri.conf.json"

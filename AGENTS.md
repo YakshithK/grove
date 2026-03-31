@@ -82,12 +82,13 @@ Vectors are stored in `~/.local/share/grove/vectors/vectors.json`. The store:
 
 ## API Key Resolution
 The Gemini API key is resolved in this priority order:
-1. `VISH_API_KEY` compile-time env var (CI builds)
-2. `GEMINI_API_KEY` compile-time env var (dev builds)
-3. `GEMINI_API_KEY` runtime env var
-4. `.env` file in project root
+1. `GROVE_API_KEY` compile-time env var (preferred CI builds)
+2. `VISH_API_KEY` compile-time env var (backward-compatible CI builds)
+3. `GEMINI_API_KEY` compile-time env var (dev builds)
+4. `GEMINI_API_KEY` runtime env var
+5. `.env` file in project root
 
-For CI releases, the key is baked into the binary via the `VISH_API_KEY` secret.
+For CI releases, the key is baked into the binary via the `GROVE_API_KEY` secret.
 
 ## Styling
 

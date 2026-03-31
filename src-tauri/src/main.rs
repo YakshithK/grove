@@ -8,14 +8,27 @@ pub mod search;
 pub mod commands;
 
 use tauri::Manager;
+use tracing::{error, Level};
 
 fn main() {
+    if let Err(error) = run() {
+        error!("Failed to start Grove: {error}");
+        eprintln!("Failed to start Grove: {error}");
+        std::process::exit(1);
+    }
+}
+
+fn run() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .try_init();
+
     // Use the app's local data directory for storing vectors
     let data_dir = dirs::data_local_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("grove");
 
-    let app_state = commands::AppState::new(data_dir);
+    let app_state = commands::AppState::new(data_dir)?;
 
     tauri::Builder::default()
         .manage(app_state)
@@ -45,5 +58,7 @@ fn main() {
             commands::reveal_in_explorer,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .map_err(|error| anyhow::anyhow!("error while running tauri application: {}", error))?;
+
+    Ok(())
 }

@@ -29,28 +29,34 @@ const INDEX_RATE_LIMIT_WINDOW_SECS: u64 = 15;
 const API_KEY_RATE_LIMIT_WINDOW_SECS: u64 = 60;
 
 /// API key resolution order:
-/// 1. VISH_API_KEY baked in at compile time (CI builds)
-/// 2. GEMINI_API_KEY baked in at compile time (dev builds)
-/// 3. GEMINI_API_KEY from runtime environment
-/// 4. GEMINI_API_KEY from .env file
+/// 1. GROVE_API_KEY baked in at compile time (preferred CI builds)
+/// 2. VISH_API_KEY baked in at compile time (backward-compatible CI builds)
+/// 3. GEMINI_API_KEY baked in at compile time (dev builds)
+/// 4. GEMINI_API_KEY from runtime environment
+/// 5. GEMINI_API_KEY from .env file
 /// 5. Empty (user must enter in Settings — not expected for shipped builds)
+const BUNDLED_GROVE_API_KEY: Option<&str> = option_env!("GROVE_API_KEY");
 const BUNDLED_API_KEY: Option<&str> = option_env!("VISH_API_KEY");
 const BUNDLED_GEMINI_KEY: Option<&str> = option_env!("GEMINI_API_KEY");
 
 fn resolve_api_key() -> String {
-    // 1. Compile-time VISH_API_KEY (CI)
+    // 1. Compile-time GROVE_API_KEY (CI)
+    if let Some(key) = BUNDLED_GROVE_API_KEY {
+        if !key.is_empty() { return key.to_string(); }
+    }
+    // 2. Compile-time VISH_API_KEY (CI compatibility)
     if let Some(key) = BUNDLED_API_KEY {
         if !key.is_empty() { return key.to_string(); }
     }
-    // 2. Compile-time GEMINI_API_KEY (dev)
+    // 3. Compile-time GEMINI_API_KEY (dev)
     if let Some(key) = BUNDLED_GEMINI_KEY {
         if !key.is_empty() { return key.to_string(); }
     }
-    // 3. Runtime env var
+    // 4. Runtime env var
     if let Ok(key) = std::env::var("GEMINI_API_KEY") {
         if !key.is_empty() { return key; }
     }
-    // 4. .env file in current dir or project root
+    // 5. .env file in current dir or project root
     if let Ok(contents) = std::fs::read_to_string(".env") {
         for line in contents.lines() {
             let line = line.trim();
@@ -139,15 +145,14 @@ struct IndexingRuntime {
 }
 
 impl AppState {
-    pub fn new(data_dir: PathBuf) -> Self {
+    pub fn new(data_dir: PathBuf) -> anyhow::Result<Self> {
         let api_key = resolve_api_key();
 
         let vector_dir = data_dir.join("vectors");
-        let vector_store = crate::store::vector::VectorStore::new(vector_dir)
-            .expect("Failed to initialize vector store");
+        let vector_store = crate::store::vector::VectorStore::new(vector_dir)?;
         let watched_roots = load_watched_roots(&data_dir).unwrap_or_default();
 
-        Self {
+        Ok(Self {
             data_dir,
             api_key: Arc::new(tokio::sync::Mutex::new(api_key)),
             http_client: reqwest::Client::new(),
@@ -162,7 +167,7 @@ impl AppState {
             security: Arc::new(tokio::sync::Mutex::new(SecurityState::default())),
             gemini_global_slots: Arc::new(Semaphore::new(GEMINI_GLOBAL_PERMITS)),
             gemini_background_slots: Arc::new(Semaphore::new(GEMINI_BACKGROUND_PERMITS)),
-        }
+        })
     }
 
     fn watch_runtime(&self) -> WatchRuntime {

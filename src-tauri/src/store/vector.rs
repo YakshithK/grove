@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tracing::{info, warn};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StoredPoint {
@@ -37,7 +38,13 @@ impl VectorStore {
         let mut index = if index_path.exists() {
             let data = std::fs::read_to_string(&index_path)
                 .context("Failed to read vector index")?;
-            serde_json::from_str(&data).unwrap_or_default()
+            match serde_json::from_str(&data) {
+                Ok(index) => index,
+                Err(error) => {
+                    warn!("Failed to parse persisted vector index, starting with empty store: {}", error);
+                    VectorIndex::default()
+                }
+            }
         } else {
             VectorIndex::default()
         };
@@ -106,13 +113,13 @@ impl VectorStore {
     pub async fn prune_missing_files(&self) -> Result<usize> {
         let mut idx = self.index.lock().await;
         let before = idx.points.len();
-        println!("prune_missing_files: Checking {} points...", before);
+        info!("prune_missing_files: checking {} points", before);
         
         idx.points.retain(|p| {
             if let Some(path_str) = p.payload.get("path") {
                 let exists = std::path::Path::new(path_str).exists();
                 if !exists {
-                    println!("prune_missing_files: Path missing: {}", path_str);
+                    warn!("prune_missing_files: path missing {}", path_str);
                 }
                 exists
             } else {
@@ -121,7 +128,7 @@ impl VectorStore {
         });
         
         let removed = before - idx.points.len();
-        println!("prune_missing_files: Removed {} ghost points out of {}", removed, before);
+        info!("prune_missing_files: removed {} ghost points out of {}", removed, before);
         if removed > 0 {
             *self.dirty.lock().await = true;
         }

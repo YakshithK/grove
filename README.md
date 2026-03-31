@@ -90,11 +90,12 @@ Key files:
 
 Gemini API keys are resolved in this order:
 
-1. `VISH_API_KEY` baked in at compile time
-2. `GEMINI_API_KEY` baked in at compile time
-3. Runtime `GEMINI_API_KEY`
-4. `GEMINI_API_KEY` from a root `.env` file
-5. Empty value, which means the user must set a key in the app
+1. `GROVE_API_KEY` baked in at compile time
+2. `VISH_API_KEY` baked in at compile time for backward compatibility
+3. `GEMINI_API_KEY` baked in at compile time
+4. Runtime `GEMINI_API_KEY`
+5. `GEMINI_API_KEY` from a root `.env` file
+6. Empty value, which means the user must set a key in the app
 
 Example `.env`:
 
@@ -194,7 +195,7 @@ The workflow in `.github/workflows/release.yml` builds for:
 - macOS Apple Silicon
 - macOS Intel
 
-The release workflow currently injects the compile-time key through the `VISH_API_KEY` environment variable.
+The release workflow currently injects the compile-time key through `GROVE_API_KEY`.
 
 ## Project Layout
 

@@ -36,7 +36,9 @@ pub fn chunk_text(text: &str, chunk_tokens: usize, overlap: usize) -> Vec<String
         return vec![];
     }
 
-    let bpe = cl100k_base().unwrap();
+    let Ok(bpe) = cl100k_base() else {
+        return vec![text.to_string()];
+    };
     let tokens = bpe.encode_ordinary(text);
     let mut chunks = Vec::new();
 
