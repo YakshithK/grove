@@ -21,7 +21,7 @@ echo "  ✓ package.json"
 
 # 1b. package-lock.json (root metadata entries)
 sed -i "0,/\"version\": \".*\"/s//\"version\": \"$NEW_VERSION\"/" "$ROOT/package-lock.json"
-sed -i "0,/\"version\": \".*\"/s//\"version\": \"$NEW_VERSION\"/" "$ROOT/package-lock.json"
+sed -i '/"packages": {/,/^[[:space:]]*},$/ s/"version": ".*"/"version": "'"$NEW_VERSION"'"/' "$ROOT/package-lock.json"
 echo "  ✓ package-lock.json"
 
 # 2. src-tauri/tauri.conf.json

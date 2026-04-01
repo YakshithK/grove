@@ -190,17 +190,17 @@ function App() {
         <>
           {/* Top bar */}
           <div className="grove-topbar">
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div className="grove-topbar-brand">
               <GroveLogo size={22} />
               <span
-                className="mono-ui uppercase"
-                style={{ fontSize: "0.7rem", letterSpacing: "0.3em", color: "var(--text-dim)" }}
+                className="grove-topbar-wordmark mono-ui uppercase"
+                aria-hidden={isCompactPreview}
               >
                 grove
               </span>
             </div>
 
-            <div style={{ flex: 1, maxWidth: 580, margin: "0 20px" }}>
+            <div className="grove-topbar-search">
               <SearchBar
                 onSearch={handleSearch}
                 isLoading={isSearching}
@@ -212,7 +212,7 @@ function App() {
 
             <button
               onClick={() => setShowSettings(true)}
-              className="glass-surface flex items-center justify-center rounded-xl text-white/70 transition hover:text-white"
+              className="grove-topbar-settings glass-surface flex items-center justify-center rounded-xl text-white/70 transition hover:text-white"
               style={{ width: 36, height: 36, flexShrink: 0 }}
               aria-label="Open settings"
             >
@@ -222,6 +222,7 @@ function App() {
 
           {/* Meta row — slim count, no border */}
           <div
+            className="grove-results-meta"
             style={{
               padding: "4px 18px 8px",
               display: "flex",

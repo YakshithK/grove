@@ -4,6 +4,37 @@ Grove is a local-first semantic desktop search app built with Tauri v2, Rust, Re
 
 The app is designed for documents, code, PDFs, images, and small media files. Index data stays on the local machine; file content is only sent to Gemini when embeddings are generated.
 
+## Download And Use The App
+
+1. Open the GitHub Releases page for Grove.
+2. Download the installer or app bundle for your OS.
+3. Install and launch Grove.
+4. On first launch, choose one or more folders to index.
+5. Wait for the initial indexing pass to finish.
+6. Start searching with natural language in the main search view.
+
+What to expect on first use:
+
+- Grove will crawl only the folders you select.
+- It builds embeddings locally with Gemini and stores the index on your machine.
+- After indexing finishes, the app keeps watching those folders for changes.
+- Clicking a result shows an in-app preview; `Open` launches the file and `Reveal` shows it in your system file explorer.
+
+If you are using an official GitHub release build that was created with the `GROVE_API_KEY` GitHub Actions secret, the app can work without manual API key setup. If your downloaded build does not include a baked-in key, open Settings in the app and add your Gemini API key there.
+
+## Quick Start For Downloaded Builds
+
+- Pick a small test folder first so the first indexing run is fast.
+- Include a mix of text files, code, images, and PDFs if you want to see the strongest demo cases.
+- PDF preview and extraction may depend on `pdftotext` being present on Linux.
+- Binary files over 10 MB are skipped on the multimodal path.
+
+## Troubleshooting Downloaded Builds
+
+- If you see "No Gemini API key found", the release build was likely created without a baked-in key. Add a key in Settings or use a newer official build.
+- If indexing is slow, start with fewer folders and avoid very large media-heavy trees.
+- If Linux launch fails, install the native Tauri dependencies listed below.
+
 ## What It Does
 
 - Indexes selected folders recursively.
@@ -174,7 +205,7 @@ When bumping versions, keep these three files in sync:
 Use the helper script:
 
 ```bash
-./scripts/bump-version.sh 0.8.1
+./scripts/bump-version.sh 1.0.0
 ```
 
 ## Releases
@@ -184,8 +215,8 @@ Releases are built by GitHub Actions on pushed tags matching `v*`.
 Example:
 
 ```bash
-git tag v0.8.0
-git push origin v0.8.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 The workflow in `.github/workflows/release.yml` builds for:
@@ -247,6 +278,6 @@ If you are new to the codebase, start here:
 
 Current version in the repo:
 
-- App version: `0.8.0`
+- App version: `1.0.0`
 
 This README documents the codebase as it exists in the repository now, not just the older planning docs.

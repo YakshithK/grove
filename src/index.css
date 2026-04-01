@@ -775,6 +775,35 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+.grove-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.grove-topbar-wordmark {
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  color: var(--text-dim);
+}
+
+.grove-topbar-search {
+  flex: 1;
+  min-width: 0;
+  max-width: 580px;
+  margin: 0 20px;
+}
+
+.grove-topbar-settings {
+  flex-shrink: 0;
+}
+
+.grove-results-meta {
+  flex-shrink: 0;
+}
+
 /* Search inputs */
 .grove-search-hero {
   width: 100%;
@@ -990,6 +1019,8 @@
 .preview-pane-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   flex-shrink: 0;
 }
@@ -1138,6 +1169,100 @@
   .search-results-layout {
     display: block;
     padding: 0 0 16px;
+  }
+}
+
+@media (max-width: 820px) {
+  .grove-topbar {
+    height: auto;
+    min-height: 50px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 12px;
+  }
+
+  .grove-topbar-search {
+    order: 3;
+    width: 100%;
+    max-width: none;
+    margin: 4px 0 0;
+  }
+
+  .grove-topbar-wordmark {
+    display: none;
+  }
+
+  .grove-results-meta {
+    padding: 4px 14px 8px !important;
+  }
+
+  .result-row {
+    margin: 0 10px 8px;
+    padding: 12px 13px;
+    gap: 0.75rem;
+  }
+
+  .result-row-actions {
+    opacity: 1;
+    pointer-events: auto;
+    min-width: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    width: 100%;
+  }
+
+  .preview-pane-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .preview-pane-actions {
+    justify-content: flex-start;
+  }
+
+  .preview-pane-overlay {
+    width: min(860px, calc(100vw - 12px));
+    height: calc(100vh - 12px);
+  }
+
+  .preview-overlay-backdrop {
+    padding: 6px;
+  }
+}
+
+@media (max-width: 640px) {
+  .result-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .result-icon-well {
+    width: 34px;
+    height: 34px;
+  }
+
+  .result-action-btn {
+    width: auto;
+    min-height: 30px;
+  }
+
+  .preview-pane-body {
+    padding: 12px;
+  }
+
+  .preview-pdf-frame-wrap {
+    min-height: 280px;
+  }
+
+  .preview-pdf-frame {
+    height: 48vh;
+  }
+
+  .preview-image {
+    max-height: 48vh;
   }
 }
 

@@ -1601,7 +1601,7 @@ dependencies = [
 
 [[package]]
 name = "grove"
-version = "0.9.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
